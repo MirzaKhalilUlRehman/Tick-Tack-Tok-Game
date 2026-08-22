@@ -1,0 +1,8 @@
+{
+  "appId": "com.km.multiplayer",
+  "appName": "KM",
+  "webDir": "dist",
+  "server": {
+    "androidScheme": "https"
+  }
+}

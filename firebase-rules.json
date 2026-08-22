@@ -1,0 +1,26 @@
+{
+  "rules": {
+    ".read": "auth != null",
+    ".write": "auth != null",
+    "users": {
+      "$userId": {
+        ".read": true,
+        ".write": "auth != null && (auth.uid == $userId || !data.exists() || data.child('playerId').val() == auth.uid)"
+      }
+    },
+    "rooms": {
+      "$roomId": {
+        ".read": true,
+        ".write": "auth != null",
+        "players": {
+          ".validate": "newData.hasChildren(['player1']) || newData.hasChildren()"
+        },
+        "chat": {
+          "$messageId": {
+            ".validate": "newData.hasChildren(['playerId', 'playerName', 'text', 'timestamp'])"
+          }
+        }
+      }
+    }
+  }
+}

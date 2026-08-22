@@ -1,0 +1,50 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 192 192" width="100%" height="100%">
+  <defs>
+    <linearGradient id="bgGrad192" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0f172a"/>
+      <stop offset="50%" stop-color="#1e1b4b"/>
+      <stop offset="100%" stop-color="#312e81"/>
+    </linearGradient>
+    <linearGradient id="primaryGlow192" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#6366f1"/>
+      <stop offset="100%" stop-color="#ec4899"/>
+    </linearGradient>
+    <linearGradient id="xGrad192" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#818cf8"/>
+      <stop offset="100%" stop-color="#4f46e5"/>
+    </linearGradient>
+    <linearGradient id="oGrad192" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#f43f5e"/>
+      <stop offset="100%" stop-color="#fb7185"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="192" height="192" rx="42" fill="url(#bgGrad192)"/>
+  <rect x="4" y="4" width="184" height="184" rx="38" fill="none" stroke="rgba(255,255,255,0.15)" stroke-width="2"/>
+
+  <!-- Grid lines -->
+  <g stroke="rgba(255, 255, 255, 0.18)" stroke-width="5" stroke-linecap="round">
+    <line x1="68" y1="36" x2="68" y2="156"/>
+    <line x1="124" y1="36" x2="124" y2="156"/>
+    <line x1="36" y1="68" x2="156" y2="68"/>
+    <line x1="36" y1="124" x2="156" y2="124"/>
+  </g>
+
+  <!-- Symbols -->
+  <g>
+    <line x1="44" y1="44" x2="60" y2="60" stroke="url(#xGrad192)" stroke-width="6" stroke-linecap="round"/>
+    <line x1="60" y1="44" x2="44" y2="60" stroke="url(#xGrad192)" stroke-width="6" stroke-linecap="round"/>
+  </g>
+
+  <circle cx="140" cy="52" r="10" fill="none" stroke="url(#oGrad192)" stroke-width="5"/>
+
+  <!-- Center Glow -->
+  <circle cx="96" cy="96" r="18" fill="#1e1b4b" stroke="url(#primaryGlow192)" stroke-width="3"/>
+  <polygon points="96,86 91,96 97,96 94,106 102,94 96,94" fill="#ffffff"/>
+
+  <circle cx="52" cy="140" r="10" fill="none" stroke="url(#oGrad192)" stroke-width="5"/>
+  <g>
+    <line x1="132" y1="132" x2="148" y2="148" stroke="url(#xGrad192)" stroke-width="6" stroke-linecap="round"/>
+    <line x1="148" y1="132" x2="132" y2="148" stroke="url(#xGrad192)" stroke-width="6" stroke-linecap="round"/>
+  </g>
+</svg>
