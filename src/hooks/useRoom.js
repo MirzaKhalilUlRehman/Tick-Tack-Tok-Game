@@ -5,7 +5,9 @@ import { useState, useEffect, useRef } from 'react';
 import {
   subscribePrivatePair,
   subscribeGameSession,
-  leavePrivatePair,
+  leaveMatchIntentionally,
+  handleOpponentDisconnectTimeout,
+  setMatchPresence,
 } from '../services/roomService';
 import { subscribeConversation, getConvId } from '../services/chatService';
 import { sound } from '../utils/soundEffects';
@@ -46,14 +48,29 @@ export function useRoom(pairId, playerProfile) {
       setError(null);
     });
 
-    // 2. Subscribe to Game State (Tic Tac Toe board, turns, rounds)
+    // 2. Subscribe to Game State (board, turns, rounds, finishReason)
     const unsubGame = subscribeGameSession(cleanId, (game) => {
       setGameData(game);
     });
 
+    // Set presence online
+    if (playerProfile?.playerId) {
+      setMatchPresence(cleanId, playerProfile.playerId, true);
+    }
+
+    const presenceInterval = setInterval(() => {
+      if (playerProfile?.playerId) {
+        setMatchPresence(cleanId, playerProfile.playerId, true);
+      }
+    }, 15000);
+
     return () => {
       unsubPair();
       unsubGame();
+      clearInterval(presenceInterval);
+      if (playerProfile?.playerId) {
+        setMatchPresence(cleanId, playerProfile.playerId, false);
+      }
     };
   }, [pairId, playerProfile?.playerId]);
 
@@ -74,7 +91,13 @@ export function useRoom(pairId, playerProfile) {
 
   const handleLeave = async () => {
     if (pairId && playerProfile?.playerId) {
-      await leavePrivatePair(pairId, playerProfile.playerId);
+      await leaveMatchIntentionally(pairId, playerProfile.playerId);
+    }
+  };
+
+  const handleDisconnectTimeout = async (oppId) => {
+    if (pairId && oppId) {
+      await handleOpponentDisconnectTimeout(pairId, oppId);
     }
   };
 
@@ -101,5 +124,6 @@ export function useRoom(pairId, playerProfile) {
     opponent,
     isOpponentConnected,
     leaveRoom: handleLeave,
+    triggerDisconnectTimeout: handleDisconnectTimeout,
   };
 }

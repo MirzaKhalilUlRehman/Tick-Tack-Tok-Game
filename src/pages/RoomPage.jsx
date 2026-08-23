@@ -1,6 +1,6 @@
 /**
  * Main 2-Player Private Arena Page for KM
- * Connects the 2 paired players with synchronized Tic Tac Toe and clean text/emoji chat.
+ * Connects the 2 paired players with synchronized Tic Tac Toe and Ludo games, plus clean text/emoji chat.
  */
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
@@ -10,6 +10,8 @@ import {
   WifiOff,
   Loader2,
   X,
+  UserPlus,
+  Check,
 } from 'lucide-react';
 import Header from '../components/common/Header';
 import WaitingRoom from '../components/room/WaitingRoom';
@@ -19,6 +21,8 @@ import ChatPanel from '../components/chat/ChatPanel';
 import Toast from '../components/common/Toast';
 import { useRoom } from '../hooks/useRoom';
 import { joinPrivatePair } from '../services/roomService';
+import { followPlayer } from '../services/socialService';
+import { useSocial } from '../hooks/useSocial';
 import { useSound } from '../hooks/useSound';
 
 export default function RoomPage({ profile }) {
@@ -35,11 +39,15 @@ export default function RoomPage({ profile }) {
     opponent,
     isOpponentConnected,
     leaveRoom,
+    triggerDisconnectTimeout,
   } = useRoom(cleanPairId, profile);
 
   const [mobileChatOpen, setMobileChatOpen] = useState(false);
   const [toastMsg, setToastMsg] = useState('');
   const [joinAttempted, setJoinAttempted] = useState(false);
+  const [isFollowLoading, setIsFollowLoading] = useState(false);
+
+  const { isFollowing } = useSocial(profile);
   const { playClick, playPop } = useSound();
 
   // If user entered directly via URL link, auto-join as Player 2 if available
@@ -68,6 +76,20 @@ export default function RoomPage({ profile }) {
     playPop();
     await leaveRoom();
     navigate('/home');
+  };
+
+  const handleFollowOpponent = async () => {
+    if (!opponent || !profile || isFollowLoading) return;
+    try {
+      setIsFollowLoading(true);
+      playPop();
+      await followPlayer(profile, opponent);
+      setToastMsg(`Following ${opponent.displayName}!`);
+    } catch (err) {
+      console.warn('Follow opponent error:', err);
+    } finally {
+      setIsFollowLoading(false);
+    }
   };
 
   if (loading) {
@@ -109,7 +131,13 @@ export default function RoomPage({ profile }) {
   }
 
   const isBothPaired = Boolean(pairData.players?.player1 && pairData.players?.player2);
-  const unreadMessagesCount = Object.keys(conversationData?.messages || {}).length;
+
+  // Unread messages count - ONLY count unseen messages from the opponent
+  const unreadMessagesCount = Object.values(conversationData?.messages || {}).filter(
+    (m) => m.senderId !== profile?.playerId && (!m.seenBy || !m.seenBy[profile?.playerId])
+  ).length;
+
+  const isFollowingOpponent = opponent?.playerId ? isFollowing(opponent.playerId) : false;
 
   return (
     <div id="room-page-layout" className="min-h-screen atmospheric-bg flex flex-col justify-between">
@@ -156,6 +184,9 @@ export default function RoomPage({ profile }) {
                     gameData={gameData}
                     pairData={pairData}
                     playerProfile={profile}
+                    isOpponentConnected={isOpponentConnected}
+                    onLeaveMatch={handleLeave}
+                    onDisconnectTimeout={triggerDisconnectTimeout}
                   />
                 ) : (
                   <TicTacToeGame
@@ -163,6 +194,9 @@ export default function RoomPage({ profile }) {
                     gameData={gameData}
                     pairData={pairData}
                     playerProfile={profile}
+                    isOpponentConnected={isOpponentConnected}
+                    onLeaveMatch={handleLeave}
+                    onDisconnectTimeout={triggerDisconnectTimeout}
                   />
                 )}
               </div>
@@ -196,7 +230,7 @@ export default function RoomPage({ profile }) {
             <MessageSquare className="w-4 h-4" />
             <span>Chat</span>
             {unreadMessagesCount > 0 && (
-              <span className="w-5 h-5 rounded-full bg-indigo-400 text-[10px] flex items-center justify-center font-bold">
+              <span className="w-5 h-5 rounded-full bg-indigo-400 text-slate-950 text-[10px] flex items-center justify-center font-black">
                 {unreadMessagesCount > 99 ? '99+' : unreadMessagesCount}
               </span>
             )}

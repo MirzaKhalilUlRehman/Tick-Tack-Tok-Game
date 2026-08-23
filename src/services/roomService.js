@@ -10,6 +10,9 @@ import {
   subscribeToPrivatePair,
   subscribeToGame,
   updateGameInDb,
+  playerLeaveMatchInDb,
+  playerDisconnectTimeoutInDb,
+  setPlayerPresenceInMatch,
 } from '../firebase/database';
 
 export async function createPrivatePair(player1Profile, gameType = 'tictactoe') {
@@ -34,11 +37,35 @@ export function subscribeGameSession(pairId, callback) {
   return subscribeToGame(pairId, callback);
 }
 
+export async function leaveMatchIntentionally(pairId, leavingPlayerId) {
+  try {
+    return await playerLeaveMatchInDb(pairId, leavingPlayerId);
+  } catch (e) {
+    console.error('Error in leaveMatchIntentionally:', e);
+    return false;
+  }
+}
+
+export async function handleOpponentDisconnectTimeout(pairId, disconnectedPlayerId) {
+  try {
+    return await playerDisconnectTimeoutInDb(pairId, disconnectedPlayerId);
+  } catch (e) {
+    console.error('Error in handleOpponentDisconnectTimeout:', e);
+    return false;
+  }
+}
+
+export async function setMatchPresence(pairId, playerId, isConnected) {
+  try {
+    return await setPlayerPresenceInMatch(pairId, playerId, isConnected);
+  } catch (e) {
+    console.error('Error in setMatchPresence:', e);
+  }
+}
+
 export async function leavePrivatePair(pairId, playerId) {
   try {
-    const pair = await getPrivatePairFromDb(pairId);
-    if (!pair) return;
-    await updateGameInDb(pairId, { status: 'waiting' });
+    return await playerLeaveMatchInDb(pairId, playerId);
   } catch (e) {
     console.error('Error leaving private match:', e);
   }

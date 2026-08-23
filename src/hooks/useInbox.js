@@ -37,7 +37,7 @@ export function useInbox(profile) {
         unreadInConv += 1;
       }
     }
-    return total + (unreadInConv > 0 ? 1 : 0);
+    return total + unreadInConv;
   }, 0);
 
   return {

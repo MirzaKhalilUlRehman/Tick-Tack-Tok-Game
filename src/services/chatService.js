@@ -28,7 +28,7 @@ export function getConvId(userIdA, userIdB) {
 /**
  * Sends a text message to a conversation
  */
-export async function sendTextMessage(convId, playerProfile, text) {
+export async function sendTextMessage(convId, playerProfile, text, replyTo = null) {
   const clean = String(text || '').trim();
   if (!clean || !convId || !playerProfile?.playerId) return null;
 
@@ -42,6 +42,12 @@ export async function sendTextMessage(convId, playerProfile, text) {
     timestamp: Date.now(),
     reactions: {},
     seenBy: { [playerProfile.playerId]: Date.now() },
+    replyTo: replyTo ? {
+      messageId: replyTo.id || replyTo.messageId,
+      senderId: replyTo.senderId,
+      senderName: replyTo.senderName || 'Player',
+      textPreview: String(replyTo.text || replyTo.textPreview || '').substring(0, 150),
+    } : null,
   };
 
   await sendChatMessageToDb(convId, message);

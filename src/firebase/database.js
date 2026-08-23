@@ -500,6 +500,12 @@ export async function sendChatMessageToDb(convId, messageData) {
     timestamp: messageData.timestamp || Date.now(),
     reactions: messageData.reactions || {},
     seenBy: { [messageData.senderId]: Date.now() },
+    replyTo: messageData.replyTo ? {
+      messageId: messageData.replyTo.messageId || null,
+      senderId: messageData.replyTo.senderId || null,
+      senderName: messageData.replyTo.senderName || 'Player',
+      textPreview: String(messageData.replyTo.textPreview || messageData.replyTo.text || '').substring(0, 150),
+    } : null,
   };
 
   const lastMessagePreview = {
@@ -507,6 +513,10 @@ export async function sendChatMessageToDb(convId, messageData) {
     senderId: fullMsg.senderId,
     senderName: fullMsg.senderName || 'Player',
     timestamp: fullMsg.timestamp,
+    replyTo: fullMsg.replyTo ? {
+      senderName: fullMsg.replyTo.senderName || 'Player',
+      textPreview: fullMsg.replyTo.textPreview,
+    } : null,
   };
 
   if (isFirebaseConfigured && db) {
@@ -1022,6 +1032,215 @@ export function subscribeToPrivatePair(pairId, callback) {
   return () => {
     activeListeners.get(key)?.delete(callback);
   };
+}
+
+export async function updatePrivatePairInDb(pairId, updates) {
+  if (!pairId) return false;
+  const cleanId = pairId.trim().toUpperCase();
+
+  if (isFirebaseConfigured && db) {
+    try {
+      const firestoreUpdates = normalizeFirestoreUpdates({
+        ...updates,
+        updatedAt: Date.now(),
+      });
+      await updateDoc(doc(db, 'privatePairs', cleanId), firestoreUpdates);
+    } catch (err) {
+      console.warn('Firestore pair update error:', err);
+    }
+  }
+
+  const existing = localPairs.get(cleanId) || getPersisted('pairs')[cleanId] || {};
+  const merged = { ...existing };
+  for (const [key, value] of Object.entries(updates)) {
+    const parts = key.split(/[/.]/);
+    if (parts.length === 1) merged[parts[0]] = value;
+    else if (parts.length === 2) merged[parts[0]] = { ...(merged[parts[0]] || {}), [parts[1]]: value };
+    else if (parts.length === 3) {
+      merged[parts[0]] = merged[parts[0]] || {};
+      merged[parts[0]][parts[1]] = { ...(merged[parts[0]][parts[1]] || {}), [parts[2]]: value };
+    }
+  }
+  merged.updatedAt = Date.now();
+  localPairs.set(cleanId, merged);
+
+  const allP = getPersisted('pairs');
+  allP[cleanId] = merged;
+  setPersisted('pairs', allP);
+
+  if (localChannel) {
+    localChannel.postMessage({ type: 'PAIR_UPDATE', id: cleanId, data: merged });
+  }
+  notifyListeners(`pair_${cleanId}`, merged);
+  return true;
+}
+
+export async function setPlayerPresenceInMatch(pairId, playerId, isConnected) {
+  if (!pairId || !playerId) return;
+  const cleanId = pairId.trim().toUpperCase();
+  const pair = await getPrivatePairFromDb(cleanId);
+  if (!pair?.players) return;
+
+  const isP1 = pair.players.player1?.playerId === playerId;
+  const isP2 = pair.players.player2?.playerId === playerId;
+
+  if (isP1) {
+    await updatePrivatePairInDb(cleanId, {
+      'players.player1.connected': isConnected,
+      'players.player1.lastHeartbeat': Date.now(),
+    });
+  } else if (isP2) {
+    await updatePrivatePairInDb(cleanId, {
+      'players.player2.connected': isConnected,
+      'players.player2.lastHeartbeat': Date.now(),
+    });
+  }
+}
+
+export async function playerLeaveMatchInDb(pairId, leavingPlayerId) {
+  if (!pairId || !leavingPlayerId) return false;
+  const cleanId = pairId.trim().toUpperCase();
+
+  const pair = await getPrivatePairFromDb(cleanId);
+  if (!pair) return false;
+
+  const p1 = pair.players?.player1;
+  const p2 = pair.players?.player2;
+  const isP1 = p1?.playerId === leavingPlayerId;
+  const isP2 = p2?.playerId === leavingPlayerId;
+
+  if (!isP1 && !isP2) return false;
+
+  const remainingPlayer = isP1 ? p2 : p1;
+  const remainingPlayerId = remainingPlayer?.playerId;
+
+  let gameData = null;
+  if (isFirebaseConfigured && db) {
+    try {
+      const snap = await getDoc(doc(db, 'games', cleanId));
+      if (snap.exists()) gameData = snap.data();
+    } catch (e) {}
+  }
+  if (!gameData) {
+    gameData = localGames.get(cleanId) || getPersisted('games')[cleanId] || {};
+  }
+
+  // If already finished with opponent_left, don't re-process duplicate
+  if (gameData?.status === 'finished' && gameData?.finishReason === 'opponent_left') {
+    return true;
+  }
+
+  const updates = {
+    status: 'finished',
+    finishReason: 'opponent_left',
+    winner: remainingPlayerId || null,
+    winnerId: remainingPlayerId || null,
+    leftPlayerId: leavingPlayerId,
+    nextGameAt: null,
+    updatedAt: Date.now(),
+  };
+
+  if (remainingPlayerId) {
+    if (isP1) {
+      updates.player2Wins = (gameData.player2Wins || 0) + 1;
+    } else {
+      updates.player1Wins = (gameData.player1Wins || 0) + 1;
+    }
+  }
+
+  await updateGameInDb(cleanId, updates);
+
+  // Record win/loss statistics exactly once in career stats and permanent head-to-head
+  if (p1 && p2 && remainingPlayerId) {
+    try {
+      await recordMatchResultInDb({
+        matchId: `${cleanId}_leave_${gameData.round || 1}_${leavingPlayerId}`,
+        pairId: cleanId,
+        gameType: pair.gameType || 'tictactoe',
+        round: gameData.round || 1,
+        player1: p1,
+        player2: p2,
+        winnerId: remainingPlayerId,
+        isDraw: false,
+      });
+    } catch (err) {
+      console.warn('Record leave match stats error:', err);
+    }
+  }
+
+  return true;
+}
+
+export async function playerDisconnectTimeoutInDb(pairId, disconnectedPlayerId) {
+  if (!pairId || !disconnectedPlayerId) return false;
+  const cleanId = pairId.trim().toUpperCase();
+
+  const pair = await getPrivatePairFromDb(cleanId);
+  if (!pair) return false;
+
+  const p1 = pair.players?.player1;
+  const p2 = pair.players?.player2;
+  const isP1 = p1?.playerId === disconnectedPlayerId;
+  const isP2 = p2?.playerId === disconnectedPlayerId;
+
+  if (!isP1 && !isP2) return false;
+
+  const remainingPlayer = isP1 ? p2 : p1;
+  const remainingPlayerId = remainingPlayer?.playerId;
+
+  let gameData = null;
+  if (isFirebaseConfigured && db) {
+    try {
+      const snap = await getDoc(doc(db, 'games', cleanId));
+      if (snap.exists()) gameData = snap.data();
+    } catch (e) {}
+  }
+  if (!gameData) {
+    gameData = localGames.get(cleanId) || getPersisted('games')[cleanId] || {};
+  }
+
+  if (gameData?.status === 'finished') {
+    return true; // Already finished
+  }
+
+  const updates = {
+    status: 'finished',
+    finishReason: 'opponent_disconnected',
+    winner: remainingPlayerId || null,
+    winnerId: remainingPlayerId || null,
+    disconnectedPlayerId: disconnectedPlayerId,
+    nextGameAt: null,
+    updatedAt: Date.now(),
+  };
+
+  if (remainingPlayerId) {
+    if (isP1) {
+      updates.player2Wins = (gameData.player2Wins || 0) + 1;
+    } else {
+      updates.player1Wins = (gameData.player1Wins || 0) + 1;
+    }
+  }
+
+  await updateGameInDb(cleanId, updates);
+
+  if (p1 && p2 && remainingPlayerId) {
+    try {
+      await recordMatchResultInDb({
+        matchId: `${cleanId}_disconnect_${gameData.round || 1}_${disconnectedPlayerId}`,
+        pairId: cleanId,
+        gameType: pair.gameType || 'tictactoe',
+        round: gameData.round || 1,
+        player1: p1,
+        player2: p2,
+        winnerId: remainingPlayerId,
+        isDraw: false,
+      });
+    } catch (err) {
+      console.warn('Record disconnect match stats error:', err);
+    }
+  }
+
+  return true;
 }
 
 export async function updateGameInDb(pairId, updates) {

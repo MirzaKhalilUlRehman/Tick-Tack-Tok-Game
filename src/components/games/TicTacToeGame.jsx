@@ -5,6 +5,9 @@
  * - Glowing winning line detection
  * - Alternating starting player each round
  * - Synchronized automatic next game countdown (5.. 4.. 3.. 2.. 1..)
+ * - Clear "Leave Game" button with confirmation modal (opponent awarded win)
+ * - Handled "Opponent Left" and "Opponent Disconnected" win states
+ * - Grace period reconnection countdown
  * - Clean score tracker
  */
 import React, { useEffect, useState, useRef } from 'react';
@@ -13,10 +16,12 @@ import {
   Trophy,
   RotateCcw,
   Zap,
-  Flame,
-  Award,
   Crown,
   Users,
+  LogOut,
+  WifiOff,
+  AlertTriangle,
+  X,
 } from 'lucide-react';
 import { getAvatarById } from '../../data/avatars';
 import {
@@ -31,18 +36,26 @@ export default function TicTacToeGame({
   gameData = {},
   pairData = {},
   playerProfile,
+  isOpponentConnected = true,
+  onLeaveMatch,
+  onDisconnectTimeout,
 }) {
   const [countdown, setCountdown] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showLeaveModal, setShowLeaveModal] = useState(false);
+  const [reconnectCountdown, setReconnectCountdown] = useState(null);
+
   const countdownIntervalRef = useRef(null);
+  const reconnectIntervalRef = useRef(null);
   const hasTriggeredRef = useRef(false);
 
-  const { playPop, playWin, playLose, playDraw, playTick } = useSound();
+  const { playPop, playWin, playLose, playDraw, playClick } = useSound();
 
   const board = gameData?.board || Array(9).fill(null);
   const currentTurn = gameData?.currentTurn;
   const status = gameData?.status || 'waiting'; // 'waiting' | 'playing' | 'finished'
   const winner = gameData?.winner;
+  const finishReason = gameData?.finishReason; // 'opponent_left' | 'opponent_disconnected' | null
   const winningLine = gameData?.winningLine || [];
   const round = gameData?.round || 1;
   const nextGameAt = gameData?.nextGameAt;
@@ -59,13 +72,42 @@ export default function TicTacToeGame({
   const p1Avatar = getAvatarById(player1?.avatar || 'fox');
   const p2Avatar = getAvatarById(player2?.avatar || 'bear');
 
-  // Determine starting player for current round
-  const startingPlayerId = gameData?.startingPlayer || player1?.playerId;
-  const isP1Starter = startingPlayerId === player1?.playerId;
+  const opponent = isPlayer1 ? player2 : player1;
 
-  // Track and synchronize automatic countdown
+  // Track opponent disconnect grace period (30s countdown before auto-win)
   useEffect(() => {
-    if (status === 'finished' && nextGameAt) {
+    if (status === 'playing' && opponent && !isOpponentConnected) {
+      let secondsLeft = 30;
+      setReconnectCountdown(secondsLeft);
+
+      reconnectIntervalRef.current = setInterval(() => {
+        secondsLeft -= 1;
+        setReconnectCountdown(secondsLeft);
+
+        if (secondsLeft <= 0) {
+          clearInterval(reconnectIntervalRef.current);
+          if (onDisconnectTimeout && opponent?.playerId) {
+            onDisconnectTimeout(opponent.playerId);
+          }
+        }
+      }, 1000);
+
+      return () => {
+        if (reconnectIntervalRef.current) {
+          clearInterval(reconnectIntervalRef.current);
+        }
+      };
+    } else {
+      setReconnectCountdown(null);
+      if (reconnectIntervalRef.current) {
+        clearInterval(reconnectIntervalRef.current);
+      }
+    }
+  }, [status, isOpponentConnected, opponent?.playerId, onDisconnectTimeout]);
+
+  // Track and synchronize automatic countdown (only for normal round completions)
+  useEffect(() => {
+    if (status === 'finished' && nextGameAt && !finishReason) {
       hasTriggeredRef.current = false;
       const updateTimer = () => {
         const remainingMs = nextGameAt - Date.now();
@@ -77,7 +119,6 @@ export default function TicTacToeGame({
           if (countdownIntervalRef.current) {
             clearInterval(countdownIntervalRef.current);
           }
-          // Only player 1 or host triggers the round start in database to prevent double execution
           if (isPlayer1 || (!player1 && isPlayer2)) {
             startNextRound(pairId, gameData, players);
           }
@@ -96,9 +137,7 @@ export default function TicTacToeGame({
         } else if (winner) {
           playLose?.();
         }
-      } catch (audioErr) {
-        console.warn('Outcome audio failed safely:', audioErr);
-      }
+      } catch (audioErr) {}
 
       return () => {
         if (countdownIntervalRef.current) {
@@ -112,7 +151,7 @@ export default function TicTacToeGame({
         clearInterval(countdownIntervalRef.current);
       }
     }
-  }, [status, nextGameAt, winner, pairId, isPlayer1, isPlayer2, round]);
+  }, [status, nextGameAt, finishReason, winner, pairId, isPlayer1, isPlayer2, round]);
 
   const handleCellClick = async (index) => {
     if (!isMyTurn || board[index] !== null || status !== 'playing' || isSubmitting) return;
@@ -130,18 +169,27 @@ export default function TicTacToeGame({
     }
   };
 
+  const handleConfirmLeave = async () => {
+    setShowLeaveModal(false);
+    playPop();
+    if (onLeaveMatch) {
+      await onLeaveMatch();
+    }
+  };
+
   // Outcome messaging
   const isWinner = winner === playerProfile?.playerId;
   const isDraw = winner === 'draw';
-  const isLoser = winner && !isWinner && !isDraw;
+  const isOpponentLeft = finishReason === 'opponent_left';
+  const isOpponentDisconnected = finishReason === 'opponent_disconnected';
 
   return (
     <div
       id="tictactoe-board-container"
-      className="flex flex-col items-center justify-between h-full max-w-xl mx-auto p-4 sm:p-6"
+      className="flex flex-col items-center justify-between h-full max-w-xl mx-auto p-4 sm:p-6 select-none"
     >
-      {/* Top Scoreboard Header */}
-      <div className="w-full flex items-center justify-between bg-slate-900/80 border border-white/10 rounded-2xl p-3 sm:p-4 backdrop-blur-xl shadow-lg">
+      {/* Top Scoreboard Header with Leave Button */}
+      <div className="w-full flex items-center justify-between bg-slate-900/80 border border-white/10 rounded-2xl p-3 sm:p-4 backdrop-blur-xl shadow-lg relative">
         {/* Player 1 Card */}
         <div
           className={`flex items-center gap-2.5 p-2 rounded-xl transition-all ${
@@ -168,11 +216,11 @@ export default function TicTacToeGame({
         </div>
 
         {/* Round Badge & Draws */}
-        <div className="flex flex-col items-center px-3">
+        <div className="flex flex-col items-center px-2">
           <span className="text-[10px] font-mono uppercase tracking-widest text-white/40">
             Round {round}
           </span>
-          <div className="flex items-center gap-1.5 text-xs font-mono text-white/60 font-bold mt-0.5">
+          <div className="flex items-center gap-1 text-xs font-mono text-white/60 font-bold mt-0.5">
             <span>VS</span>
           </div>
           <span className="text-[10px] text-white/40 font-mono">
@@ -207,6 +255,17 @@ export default function TicTacToeGame({
           </div>
         </div>
       </div>
+
+      {/* Reconnection Alert Bar if opponent drops */}
+      {reconnectCountdown !== null && (
+        <div className="mt-3 w-full bg-amber-500/15 border border-amber-500/30 rounded-xl px-4 py-2 flex items-center justify-center gap-2 text-xs text-amber-200 animate-pulse">
+          <WifiOff className="w-4 h-4 text-amber-400 shrink-0" />
+          <span>
+            Opponent reconnecting... Awarding victory in{' '}
+            <strong className="font-mono text-white text-sm">{reconnectCountdown}s</strong>
+          </span>
+        </div>
+      )}
 
       {/* Turn & Status Announcement Banner */}
       <div className="my-3 sm:my-4 w-full text-center">
@@ -243,16 +302,32 @@ export default function TicTacToeGame({
             <div
               className={`inline-flex items-center gap-2 px-6 py-2.5 rounded-2xl text-sm sm:text-base font-black shadow-xl ${
                 isWinner
-                  ? 'bg-gradient-to-r from-amber-500 to-yellow-500 text-slate-950 shadow-amber-500/30'
+                  ? 'bg-gradient-to-r from-amber-500 to-yellow-500 text-slate-950 shadow-amber-500/30 ring-2 ring-amber-300'
                   : isDraw
                   ? 'bg-slate-700 text-white border border-white/20'
+                  : isOpponentLeft
+                  ? 'bg-rose-600 text-white shadow-rose-600/30'
                   : 'bg-rose-600 text-white shadow-rose-600/30'
               }`}
             >
-              {isWinner && <Crown className="w-5 h-5" />}
+              {isWinner ? (
+                <Crown className="w-5 h-5" />
+              ) : isOpponentLeft ? (
+                <LogOut className="w-5 h-5" />
+              ) : (
+                <Trophy className="w-5 h-5" />
+              )}
               <span>
                 {isWinner
-                  ? '🎉 Victory! You Won This Round!'
+                  ? isOpponentLeft
+                    ? 'Opponent Left — 🏆 You Won!'
+                    : isOpponentDisconnected
+                    ? 'Opponent Disconnected — 🏆 You Won!'
+                    : '🎉 Victory! You Won This Round!'
+                  : isOpponentLeft
+                  ? 'You Left the Match'
+                  : isOpponentDisconnected
+                  ? 'Connection Lost'
                   : isDraw
                   ? '🤝 Match Tied! Great Game!'
                   : `Round Won by ${
@@ -263,8 +338,17 @@ export default function TicTacToeGame({
               </span>
             </div>
 
-            {/* Synchronized Auto Next-Game Countdown */}
-            {countdown !== null && (
+            {/* Sub-explanation */}
+            {isOpponentLeft && (
+              <span className="text-xs text-white/60">
+                {isWinner
+                  ? 'Opponent left the match. Full victory awarded to you.'
+                  : 'You abandoned the match. Full victory awarded to opponent.'}
+              </span>
+            )}
+
+            {/* Synchronized Auto Next-Game Countdown (for normal wins) */}
+            {countdown !== null && !finishReason && (
               <div className="flex items-center gap-2 text-xs font-mono text-white/70 mt-1">
                 <RotateCcw className="w-3.5 h-3.5 animate-spin text-indigo-400" />
                 <span>
@@ -326,13 +410,67 @@ export default function TicTacToeGame({
         })}
       </div>
 
-      {/* Footer Info */}
-      <div className="mt-4 sm:mt-6 text-center text-xs text-white/40 flex items-center gap-2">
-        <Sparkles className="w-3.5 h-3.5 text-indigo-400" />
-        <span>
-          Starting player alternates automatically every round
-        </span>
+      {/* Footer Controls & Leave Game Button */}
+      <div className="mt-4 sm:mt-6 flex items-center justify-between w-full max-w-[380px] px-2 text-xs">
+        <div className="text-white/40 flex items-center gap-1.5">
+          <Sparkles className="w-3.5 h-3.5 text-indigo-400" />
+          <span>Alternate starts</span>
+        </div>
+
+        {status === 'playing' && (
+          <button
+            id="ttt-leave-game-btn"
+            type="button"
+            onClick={() => {
+              playClick();
+              setShowLeaveModal(true);
+            }}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/30 text-rose-300 font-bold hover:text-rose-200 transition-all cursor-pointer"
+          >
+            <LogOut className="w-3.5 h-3.5" />
+            <span>Leave Game</span>
+          </button>
+        )}
       </div>
+
+      {/* Leave Game Confirmation Modal */}
+      {showLeaveModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in-50 duration-150">
+          <div className="w-full max-w-sm bg-slate-900 border border-white/15 rounded-3xl p-6 shadow-2xl space-y-4">
+            <div className="w-12 h-12 rounded-2xl bg-rose-500/20 border border-rose-500/40 flex items-center justify-center text-rose-400 mx-auto">
+              <AlertTriangle className="w-6 h-6" />
+            </div>
+
+            <div className="text-center">
+              <h3 className="text-lg font-black text-white font-display">
+                Leave Active Game?
+              </h3>
+              <p className="text-xs text-white/60 mt-1 leading-relaxed">
+                If you leave now, your opponent will immediately win the match and victory will be awarded to them.
+              </p>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3 pt-2">
+              <button
+                id="cancel-leave-btn"
+                type="button"
+                onClick={() => setShowLeaveModal(false)}
+                className="py-2.5 px-4 rounded-xl bg-white/10 hover:bg-white/15 text-white text-xs font-bold transition-colors cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                id="confirm-leave-btn"
+                type="button"
+                onClick={handleConfirmLeave}
+                className="py-2.5 px-4 rounded-xl bg-rose-600 hover:bg-rose-500 text-white text-xs font-bold shadow-lg shadow-rose-600/30 transition-colors cursor-pointer"
+              >
+                Leave Game
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
