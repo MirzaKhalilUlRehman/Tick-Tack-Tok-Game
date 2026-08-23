@@ -32,5 +32,11 @@ export function useSound() {
     playShipSunk: () => sound.playShipSunk(),
     playChatMessage: () => sound.playChatMessage(),
     playPlayerJoin: () => sound.playPlayerJoin(),
+    playDiceRoll: () => sound.playDiceRoll(),
+    playTokenMove: () => sound.playTokenMove(),
+    playTokenCapture: () => sound.playTokenCapture(),
+    playBonusTurn: () => sound.playBonusTurn?.(),
+    playLose: () => sound.playLose?.(),
+    playTick: () => sound.playTick?.(),
   };
 }

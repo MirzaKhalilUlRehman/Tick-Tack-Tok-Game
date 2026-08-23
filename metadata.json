@@ -1,6 +1,6 @@
 {
   "name": "KM",
-  "description": "Real-time Tic Tac Toe and mutual-follow inbox messaging platform.",
+  "description": "Real-time multiplayer Ludo & Tic Tac Toe matches with mutual-follow inbox messaging.",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

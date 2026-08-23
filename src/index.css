@@ -10,6 +10,8 @@
       radial-gradient(circle at 100% 100%, rgba(30, 27, 75, 0.6) 0%, rgba(5, 5, 10, 0.95) 50%);
     background-attachment: fixed;
     background-size: cover;
+    padding-bottom: env(safe-area-inset-bottom);
+    padding-top: env(safe-area-inset-top);
   }
   
   h1, h2, h3, h4, .font-display {
@@ -113,3 +115,27 @@
   text-shadow: 0 0 16px rgba(34, 211, 238, 0.65);
 }
 
+/* PWA Keyframe Animations */
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fadeIn {
+  animation: fadeIn 0.25s ease-out forwards;
+}
+
+.animate-slideUp {
+  animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}

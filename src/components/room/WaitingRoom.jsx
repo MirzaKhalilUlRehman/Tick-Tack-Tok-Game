@@ -29,6 +29,9 @@ export default function WaitingRoom({ pairData, playerProfile, onLeaveRoom, onCo
   const hostPlayer = pairData?.players?.player1;
   const hostAvatar = getAvatarById(hostPlayer?.avatar || 'fox');
 
+  const isLudo = pairData?.gameType === 'ludo';
+  const gameName = isLudo ? 'Ludo' : 'Tic Tac Toe';
+
   const handleCopyCode = () => {
     if (pairId) {
       playClick();
@@ -47,8 +50,8 @@ export default function WaitingRoom({ pairData, playerProfile, onLeaveRoom, onCo
     if (navigator.share) {
       try {
         await navigator.share({
-          title: 'Join my private Tic Tac Toe match!',
-          text: `Join my private Tic Tac Toe match & chat! Pairing Code: ${pairId}`,
+          title: `Join my private ${gameName} match!`,
+          text: `Join my private ${gameName} match & chat on KM! Pairing Code: ${pairId}`,
           url: inviteUrl,
         });
         if (onCopyInvite) onCopyInvite('Invite sent!');
@@ -72,7 +75,7 @@ export default function WaitingRoom({ pairData, playerProfile, onLeaveRoom, onCo
         <div className="flex flex-wrap items-center justify-center gap-2 mb-4">
           <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-indigo-500/15 border border-indigo-500/30 text-indigo-300 text-xs font-semibold">
             <ShieldCheck className="w-3.5 h-3.5 text-indigo-400" />
-            <span>Private 2-Player Space</span>
+            <span>2-Player {gameName}</span>
           </div>
           <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 text-[11px] font-semibold">
             <Monitor className="w-3 h-3" />
@@ -142,19 +145,25 @@ export default function WaitingRoom({ pairData, playerProfile, onLeaveRoom, onCo
         {/* Players Status Matrix */}
         <div className="grid grid-cols-2 gap-3 sm:gap-4 my-6">
           {/* Player 1 */}
-          <div className="p-4 rounded-2xl bg-white/[0.04] border border-indigo-500/30 flex flex-col items-center text-center">
+          <div className={`p-4 rounded-2xl border flex flex-col items-center text-center ${
+            isLudo ? 'bg-rose-500/10 border-rose-500/30' : 'bg-white/[0.04] border-indigo-500/30'
+          }`}>
             <div className="relative">
               <div
-                className={`w-14 h-14 rounded-full bg-gradient-to-br ${hostAvatar.color} flex items-center justify-center text-2xl shadow-lg ring-2 ring-indigo-500/50`}
+                className={`w-14 h-14 rounded-full bg-gradient-to-br ${hostAvatar.color} flex items-center justify-center text-2xl shadow-lg ring-2 ${
+                  isLudo ? 'ring-rose-500/60' : 'ring-indigo-500/50'
+                }`}
               >
                 <span>{hostAvatar.emoji}</span>
               </div>
-              <span className="absolute -bottom-1 -right-1 px-1.5 py-0.5 rounded-full bg-indigo-500 text-[9px] font-black uppercase text-white tracking-wider">
-                P1
+              <span className={`absolute -bottom-1 -right-1 px-1.5 py-0.5 rounded-full text-[9px] font-black uppercase text-white tracking-wider ${
+                isLudo ? 'bg-rose-600' : 'bg-indigo-500'
+              }`}>
+                {isLudo ? 'RED' : 'P1'}
               </span>
             </div>
             <p className="text-sm font-bold text-white mt-2 truncate max-w-full">
-              {hostPlayer?.displayName || 'Player 1'}
+              {hostPlayer?.displayName || (isLudo ? 'Player 1 (Red)' : 'Player 1')}
             </p>
             <span className="text-[11px] text-emerald-400 font-semibold flex items-center gap-1.5 mt-0.5">
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping"></span>
@@ -163,11 +172,17 @@ export default function WaitingRoom({ pairData, playerProfile, onLeaveRoom, onCo
           </div>
 
           {/* Player 2 */}
-          <div className="p-4 rounded-2xl bg-white/[0.02] border border-white/10 flex flex-col items-center justify-center text-center">
-            <div className="w-14 h-14 rounded-full border-2 border-dashed border-white/20 flex items-center justify-center text-white/30 animate-pulse">
-              <Loader2 className="w-6 h-6 animate-spin text-indigo-400" />
+          <div className={`p-4 rounded-2xl border flex flex-col items-center justify-center text-center ${
+            isLudo ? 'bg-amber-500/5 border-amber-500/20' : 'bg-white/[0.02] border-white/10'
+          }`}>
+            <div className={`w-14 h-14 rounded-full border-2 border-dashed flex items-center justify-center animate-pulse ${
+              isLudo ? 'border-amber-400/40 text-amber-300/40' : 'border-white/20 text-white/30'
+            }`}>
+              <Loader2 className={`w-6 h-6 animate-spin ${isLudo ? 'text-amber-400' : 'text-indigo-400'}`} />
             </div>
-            <p className="text-sm font-bold text-white/40 mt-2">Player 2</p>
+            <p className="text-sm font-bold text-white/40 mt-2">
+              {isLudo ? 'Player 2 (Yellow)' : 'Player 2'}
+            </p>
             <span className="text-[11px] text-white/30 font-medium">Waiting to connect...</span>
           </div>
         </div>

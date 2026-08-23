@@ -43,28 +43,5 @@
       "type": "image/svg+xml",
       "purpose": "any"
     }
-  ],
-  "shortcuts": [
-    {
-      "name": "Tic Tac Toe",
-      "short_name": "TicTacToe",
-      "description": "Play 1v1 Tic Tac Toe",
-      "url": "/create-room",
-      "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }]
-    },
-    {
-      "name": "Ludo Arena",
-      "short_name": "Ludo",
-      "description": "Play 2-Player Ludo match",
-      "url": "/ludo",
-      "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }]
-    },
-    {
-      "name": "Inbox",
-      "short_name": "Inbox",
-      "description": "Open messages",
-      "url": "/inbox",
-      "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }]
-    }
   ]
 }

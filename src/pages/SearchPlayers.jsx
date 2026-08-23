@@ -310,6 +310,7 @@ function PlayerFollowCard({
   onToggleFollow,
   onOpenChat,
 }) {
+  const navigate = useNavigate();
   const avatar = getAvatarById(user.avatar || 'fox');
 
   return (
@@ -317,16 +318,20 @@ function PlayerFollowCard({
       id={`player-card-${user.playerId}`}
       className="bg-white/[0.03] hover:bg-white/[0.05] border border-white/10 rounded-2xl p-4 sm:p-5 flex items-center justify-between gap-4 transition-all"
     >
-      <div className="flex items-center gap-3.5 min-w-0">
+      <div
+        onClick={() => navigate(`/profile/${user.playerId}`)}
+        className="flex items-center gap-3.5 min-w-0 cursor-pointer group flex-1"
+        title="View Player Profile"
+      >
         <div
-          className={`w-12 h-12 rounded-2xl bg-gradient-to-br ${avatar.color} flex items-center justify-center text-2xl shadow-md ring-1 ${avatar.ring} shrink-0`}
+          className={`w-12 h-12 rounded-2xl bg-gradient-to-br ${avatar.color} flex items-center justify-center text-2xl shadow-md ring-1 ${avatar.ring} shrink-0 group-hover:scale-105 transition-transform`}
         >
           <span>{avatar.emoji}</span>
         </div>
 
         <div className="min-w-0">
           <div className="flex items-center gap-2">
-            <h4 className="text-sm font-bold text-white font-display truncate">
+            <h4 className="text-sm font-bold text-white font-display truncate group-hover:text-indigo-300 transition-colors">
               {user.displayName}
             </h4>
             {isMutual && (
@@ -335,7 +340,7 @@ function PlayerFollowCard({
               </span>
             )}
           </div>
-          <p className="text-xs text-white/50 font-mono mt-0.5">
+          <p className="text-xs text-white/50 font-mono mt-0.5 group-hover:text-indigo-400/80 transition-colors">
             @{user.playerId}
           </p>
         </div>

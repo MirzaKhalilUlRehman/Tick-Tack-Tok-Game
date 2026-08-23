@@ -8,12 +8,14 @@
  * - Smooth auto-scrolling
  */
 import React, { useState, useEffect, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   Send,
   Smile,
   Check,
   CheckCheck,
   X,
+  ExternalLink,
 } from 'lucide-react';
 import { getAvatarById } from '../../data/avatars';
 import {
@@ -39,6 +41,7 @@ export default function ChatPanel({
   otherPlayer = null,
   isHeaderCompact = false,
 }) {
+  const navigate = useNavigate();
   const [inputText, setInputText] = useState('');
   const [isEmojiPickerOpen, setIsEmojiPickerOpen] = useState(false);
   const [activeReactionMsgId, setActiveReactionMsgId] = useState(null);
@@ -144,10 +147,18 @@ export default function ChatPanel({
       {/* Top Conversation Header */}
       {!isHeaderCompact && (
         <div className="p-3.5 sm:p-4 bg-white/[0.03] border-b border-white/10 flex items-center justify-between">
-          <div className="flex items-center gap-3">
+          <div
+            onClick={() => {
+              if (otherPlayer?.playerId) {
+                navigate(`/profile/${otherPlayer.playerId}`);
+              }
+            }}
+            className="flex items-center gap-3 cursor-pointer group"
+            title="View Player Profile"
+          >
             {otherPlayer ? (
               <div
-                className={`w-9 h-9 sm:w-10 sm:h-10 rounded-2xl bg-gradient-to-br ${otherAvatar.color} flex items-center justify-center text-lg shadow-md ring-1 ${otherAvatar.ring}`}
+                className={`w-9 h-9 sm:w-10 sm:h-10 rounded-2xl bg-gradient-to-br ${otherAvatar.color} flex items-center justify-center text-lg shadow-md ring-1 ${otherAvatar.ring} group-hover:scale-105 transition-transform`}
               >
                 <span>{otherAvatar.emoji}</span>
               </div>
@@ -157,8 +168,9 @@ export default function ChatPanel({
               </div>
             )}
             <div>
-              <h3 className="text-sm font-bold text-white font-display flex items-center gap-2">
+              <h3 className="text-sm font-bold text-white font-display flex items-center gap-1.5 group-hover:text-indigo-300 transition-colors">
                 <span>{otherPlayer?.displayName || 'Chat'}</span>
+                {otherPlayer?.playerId && <ExternalLink className="w-3 h-3 text-white/30 group-hover:text-indigo-300" />}
               </h3>
               <p className="text-[11px] text-white/50 font-mono">
                 {otherPlayer?.playerId ? `@${otherPlayer.playerId}` : 'Direct Conversation'}

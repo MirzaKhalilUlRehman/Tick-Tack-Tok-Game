@@ -14,6 +14,7 @@ import {
 import Header from '../components/common/Header';
 import WaitingRoom from '../components/room/WaitingRoom';
 import TicTacToeGame from '../components/games/TicTacToeGame';
+import LudoGame from '../components/games/LudoGame';
 import ChatPanel from '../components/chat/ChatPanel';
 import Toast from '../components/common/Toast';
 import { useRoom } from '../hooks/useRoom';
@@ -149,12 +150,21 @@ export default function RoomPage({ profile }) {
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
               {/* Game Arena (7 cols on desktop) */}
               <div className="lg:col-span-7 xl:col-span-7 flex flex-col items-center w-full">
-                <TicTacToeGame
-                  pairId={cleanPairId}
-                  gameData={gameData}
-                  pairData={pairData}
-                  playerProfile={profile}
-                />
+                {(gameData?.gameType === 'ludo' || pairData?.gameType === 'ludo') ? (
+                  <LudoGame
+                    pairId={cleanPairId}
+                    gameData={gameData}
+                    pairData={pairData}
+                    playerProfile={profile}
+                  />
+                ) : (
+                  <TicTacToeGame
+                    pairId={cleanPairId}
+                    gameData={gameData}
+                    pairData={pairData}
+                    playerProfile={profile}
+                  />
+                )}
               </div>
 
               {/* Text/Emoji Chat Sidebar (5 cols on desktop) */}

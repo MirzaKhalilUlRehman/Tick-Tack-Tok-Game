@@ -4,7 +4,7 @@
  */
 import { initializeApp, getApps, getApp } from 'firebase/app';
 import { getAuth } from 'firebase/auth';
-import { getFirestore } from 'firebase/firestore';
+import { getFirestore, initializeFirestore } from 'firebase/firestore';
 import { getStorage } from 'firebase/storage';
 import appletConfig from '../../firebase-applet-config.json';
 
@@ -31,12 +31,24 @@ if (isFirebaseConfigured) {
     app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
     auth = getAuth(app);
     
-    // Connect to specific provisioned databaseId or default Firestore
+    // Connect to specific provisioned databaseId or default Firestore with resilient long-polling auto-detection
     const dbId = appletConfig.firestoreDatabaseId;
-    if (dbId && dbId !== '(default)') {
-      db = getFirestore(app, dbId);
-    } else {
-      db = getFirestore(app);
+    const firestoreSettings = {
+      experimentalAutoDetectLongPolling: true,
+    };
+
+    try {
+      if (dbId && dbId !== '(default)') {
+        db = initializeFirestore(app, firestoreSettings, dbId);
+      } else {
+        db = initializeFirestore(app, firestoreSettings);
+      }
+    } catch (fsInitErr) {
+      if (dbId && dbId !== '(default)') {
+        db = getFirestore(app, dbId);
+      } else {
+        db = getFirestore(app);
+      }
     }
 
     try {

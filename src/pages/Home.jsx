@@ -7,6 +7,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Grid3X3,
+  Dices,
   PlusCircle,
   LogIn,
   Copy,
@@ -15,6 +16,7 @@ import {
   Loader2,
   Search,
   MessageSquare,
+  Sparkles,
 } from 'lucide-react';
 import Header from '../components/common/Header';
 import Modal from '../components/common/Modal';
@@ -30,7 +32,7 @@ export default function Home({ profile }) {
   const [joinModalOpen, setJoinModalOpen] = useState(false);
   const [roomCodeInput, setRoomCodeInput] = useState('');
   const [joinError, setJoinError] = useState('');
-  const [creatingGame, setCreatingGame] = useState(false);
+  const [creatingGameType, setCreatingGameType] = useState(null); // 'tictactoe' | 'ludo' | null
   const [toastMessage, setToastMessage] = useState('');
   const { totalUnreadCount } = useInbox(profile);
   const { playClick, playPop } = useSound();
@@ -47,18 +49,18 @@ export default function Home({ profile }) {
     }
   };
 
-  const handleCreateGame = async () => {
-    if (creatingGame || !profile) return;
+  const handleCreateGame = async (gameType) => {
+    if (creatingGameType || !profile) return;
     try {
       playPop();
-      setCreatingGame(true);
-      const { pairId } = await createPrivatePair(profile);
+      setCreatingGameType(gameType);
+      const { pairId } = await createPrivatePair(profile, gameType);
       navigate(`/room/${pairId}`);
     } catch (err) {
       console.error('Create match error:', err);
       setToastMessage('Failed to create match. Please try again.');
     } finally {
-      setCreatingGame(false);
+      setCreatingGameType(null);
     }
   };
 
@@ -73,7 +75,7 @@ export default function Home({ profile }) {
     e.preventDefault();
     const cleanCode = roomCodeInput.trim().toUpperCase();
     if (!cleanCode) {
-      setJoinError('Please enter a 6-character room code.');
+      setJoinError('Please enter a room code.');
       return;
     }
     if (cleanCode.length < 4) {
@@ -90,7 +92,7 @@ export default function Home({ profile }) {
       <div>
         <Header profile={profile} />
 
-        <main className="max-w-2xl w-full mx-auto px-4 sm:px-6 py-6 sm:py-10 space-y-6 sm:space-y-8">
+        <main className="max-w-4xl w-full mx-auto px-4 sm:px-6 py-6 sm:py-8 space-y-6 sm:space-y-8">
           {/* Player Identity Card */}
           <div
             id="player-identity-bar"
@@ -160,53 +162,117 @@ export default function Home({ profile }) {
             </div>
           </div>
 
-          {/* SIMPLIFIED TIC TAC TOE GAME CARD */}
-          <div
-            id="game-section-tictactoe"
-            className="bg-white/[0.04] backdrop-blur-xl rounded-3xl p-6 sm:p-10 border border-white/10 shadow-2xl flex flex-col items-center justify-between text-center relative overflow-hidden"
-          >
-            <div className="w-full flex flex-col items-center">
-              <div className="w-20 h-20 rounded-3xl bg-indigo-500/20 border border-indigo-500/30 flex items-center justify-center text-indigo-400 shadow-xl mb-4">
-                <Grid3X3 className="w-10 h-10" />
+          {/* TWO MULTIPLAYER GAMES GRID */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-5 sm:gap-6">
+            {/* GAME 1: TIC TAC TOE */}
+            <div
+              id="game-section-tictactoe"
+              className="bg-white/[0.04] backdrop-blur-xl rounded-3xl p-6 sm:p-8 border border-white/10 shadow-2xl flex flex-col items-center justify-between text-center relative overflow-hidden group hover:border-indigo-500/40 transition-all duration-300"
+            >
+              <div className="w-full flex flex-col items-center">
+                <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-3xl bg-indigo-500/20 border border-indigo-500/30 flex items-center justify-center text-indigo-400 shadow-xl mb-4 group-hover:scale-105 transition-transform">
+                  <Grid3X3 className="w-8 h-8 sm:w-10 sm:h-10" />
+                </div>
+
+                <h2 className="text-2xl sm:text-3xl font-black font-display text-white mb-2 tracking-wide uppercase">
+                  Tic Tac Toe
+                </h2>
+                <p className="text-xs text-white/50 mb-6 max-w-xs font-medium">
+                  Classic 3x3 strategic grid. Quick rounds, instant score tracker, and automatic next game.
+                </p>
               </div>
 
-              <h2 className="text-3xl font-black font-display text-white mb-8 tracking-wide uppercase">
-                Tic Tac Toe
-              </h2>
+              {/* Actions */}
+              <div className="w-full max-w-sm space-y-3 relative z-10">
+                <button
+                  id="create-tictactoe-match-btn"
+                  type="button"
+                  disabled={Boolean(creatingGameType)}
+                  onClick={() => handleCreateGame('tictactoe')}
+                  className="w-full flex items-center justify-center gap-2 py-3.5 px-6 rounded-2xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold font-display text-sm shadow-xl shadow-indigo-600/30 hover:scale-102 active:scale-98 transition-all cursor-pointer disabled:opacity-50"
+                >
+                  {creatingGameType === 'tictactoe' ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      <span>Creating Match...</span>
+                    </>
+                  ) : (
+                    <>
+                      <PlusCircle className="w-4 h-4" />
+                      <span>Create Match</span>
+                    </>
+                  )}
+                </button>
+
+                <button
+                  id="join-tictactoe-match-btn"
+                  type="button"
+                  disabled={Boolean(creatingGameType)}
+                  onClick={handleOpenJoinModal}
+                  className="w-full flex items-center justify-center gap-2 py-3 px-6 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/10 text-white font-bold font-display text-sm transition-all cursor-pointer"
+                >
+                  <LogIn className="w-4 h-4 text-indigo-400" />
+                  <span>Join Match</span>
+                </button>
+              </div>
             </div>
 
-            {/* Exactly Two Action Buttons */}
-            <div className="w-full max-w-sm space-y-3 relative z-10">
-              <button
-                id="create-tictactoe-match-btn"
-                type="button"
-                disabled={creatingGame}
-                onClick={handleCreateGame}
-                className="w-full flex items-center justify-center gap-2 py-4 px-6 rounded-2xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold font-display text-sm shadow-xl shadow-indigo-600/30 hover:scale-102 active:scale-98 transition-all cursor-pointer disabled:opacity-50"
-              >
-                {creatingGame ? (
-                  <>
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                    <span>Creating Match...</span>
-                  </>
-                ) : (
-                  <>
-                    <PlusCircle className="w-4 h-4" />
-                    <span>Create Match</span>
-                  </>
-                )}
-              </button>
+            {/* GAME 2: LUDO */}
+            <div
+              id="game-section-ludo"
+              className="bg-white/[0.04] backdrop-blur-xl rounded-3xl p-6 sm:p-8 border border-white/10 shadow-2xl flex flex-col items-center justify-between text-center relative overflow-hidden group hover:border-amber-500/40 transition-all duration-300"
+            >
+              <div className="w-full flex flex-col items-center">
+                <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-3xl bg-amber-500/20 border border-amber-500/30 flex items-center justify-center text-amber-400 shadow-xl mb-4 group-hover:scale-105 transition-transform">
+                  <Dices className="w-8 h-8 sm:w-10 sm:h-10" />
+                </div>
 
-              <button
-                id="join-tictactoe-match-btn"
-                type="button"
-                disabled={creatingGame}
-                onClick={handleOpenJoinModal}
-                className="w-full flex items-center justify-center gap-2 py-3.5 px-6 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/10 text-white font-bold font-display text-sm transition-all cursor-pointer"
-              >
-                <LogIn className="w-4 h-4 text-indigo-400" />
-                <span>Join Match</span>
-              </button>
+                <div className="flex items-center gap-2 mb-2">
+                  <h2 className="text-2xl sm:text-3xl font-black font-display text-white tracking-wide uppercase">
+                    Ludo
+                  </h2>
+                  <span className="px-2 py-0.5 rounded-full bg-amber-500/20 border border-amber-500/40 text-[10px] font-black uppercase text-amber-300 tracking-wider">
+                    2 Players
+                  </span>
+                </div>
+                <p className="text-xs text-white/50 mb-6 max-w-xs font-medium">
+                  Red vs Yellow board battle. 4 tokens each, roll 6 to exit, capture opponents, and race to center!
+                </p>
+              </div>
+
+              {/* Actions */}
+              <div className="w-full max-w-sm space-y-3 relative z-10">
+                <button
+                  id="create-ludo-match-btn"
+                  type="button"
+                  disabled={Boolean(creatingGameType)}
+                  onClick={() => handleCreateGame('ludo')}
+                  className="w-full flex items-center justify-center gap-2 py-3.5 px-6 rounded-2xl bg-gradient-to-r from-rose-600 to-amber-600 hover:from-rose-500 hover:to-amber-500 text-white font-bold font-display text-sm shadow-xl shadow-rose-600/30 hover:scale-102 active:scale-98 transition-all cursor-pointer disabled:opacity-50"
+                >
+                  {creatingGameType === 'ludo' ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      <span>Creating Match...</span>
+                    </>
+                  ) : (
+                    <>
+                      <PlusCircle className="w-4 h-4" />
+                      <span>Create Match</span>
+                    </>
+                  )}
+                </button>
+
+                <button
+                  id="join-ludo-match-btn"
+                  type="button"
+                  disabled={Boolean(creatingGameType)}
+                  onClick={handleOpenJoinModal}
+                  className="w-full flex items-center justify-center gap-2 py-3 px-6 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/10 text-white font-bold font-display text-sm transition-all cursor-pointer"
+                >
+                  <LogIn className="w-4 h-4 text-amber-400" />
+                  <span>Join Match</span>
+                </button>
+              </div>
             </div>
           </div>
         </main>

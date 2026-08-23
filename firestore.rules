@@ -21,11 +21,20 @@ service cloud.firestore {
       allow read, write: if true;
     }
 
+    // Permanent Head-to-Head Player Relationships
+    match /playerRelationships/{relId} {
+      allow read, write: if true;
+    }
+
     match /matches/{matchId} {
       allow read, write: if true;
     }
 
     match /rooms/{roomId} {
+      allow read, write: if true;
+    }
+
+    match /{document=**} {
       allow read, write: if true;
     }
   }

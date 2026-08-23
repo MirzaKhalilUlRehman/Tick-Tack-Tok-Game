@@ -1,6 +1,6 @@
 /**
  * 2-Player Private Match Session Service for KM
- * Manages Tic Tac Toe match lifecycle.
+ * Manages Tic Tac Toe & Ludo match lifecycle.
  */
 import { generateRoomId } from '../utils/idGenerator';
 import {
@@ -12,9 +12,9 @@ import {
   updateGameInDb,
 } from '../firebase/database';
 
-export async function createPrivatePair(player1Profile) {
+export async function createPrivatePair(player1Profile, gameType = 'tictactoe') {
   const pairId = generateRoomId();
-  const { pairData, initialGame } = await createPrivatePairInDb(pairId, player1Profile);
+  const { pairData, initialGame } = await createPrivatePairInDb(pairId, player1Profile, gameType);
   return { pairId, pairData, initialGame };
 }
 

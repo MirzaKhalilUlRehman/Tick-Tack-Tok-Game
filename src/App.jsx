@@ -6,11 +6,15 @@ import Home from './pages/Home';
 import CreateRoom from './pages/CreateRoom';
 import JoinRoom from './pages/JoinRoom';
 import RoomPage from './pages/RoomPage';
+import LudoLobby from './pages/LudoLobby';
+import LudoGamePage from './pages/LudoGame';
 import Profile from './pages/Profile';
 import Inbox from './pages/Inbox';
 import ConversationPage from './pages/ConversationPage';
 import SearchPlayers from './pages/SearchPlayers';
 import InstallAppPrompt from './components/common/InstallAppPrompt';
+import NetworkStatusBar from './components/common/NetworkStatusBar';
+import PWAUpdateNotification from './components/common/PWAUpdateNotification';
 import { Loader2 } from 'lucide-react';
 
 export default function App() {
@@ -27,7 +31,9 @@ export default function App() {
 
   return (
     <Router>
+      <NetworkStatusBar />
       <InstallAppPrompt />
+      <PWAUpdateNotification />
       <Routes>
         {/* Entry Route: Setup Profile if new, or Home if profile exists */}
         <Route
@@ -89,9 +95,23 @@ export default function App() {
           }
         />
 
-        {/* Profile Settings */}
+        {/* Profile Settings & Player Dashboards */}
         <Route
           path="/profile"
+          element={
+            hasProfile ? (
+              <Profile
+                profile={profile}
+                onUpdateProfile={updateProfile}
+                onLogout={logout}
+              />
+            ) : (
+              <Navigate to="/" replace />
+            )
+          }
+        />
+        <Route
+          path="/profile/:targetPlayerId"
           element={
             hasProfile ? (
               <Profile
@@ -135,6 +155,28 @@ export default function App() {
           element={
             hasProfile ? (
               <RoomPage profile={profile} />
+            ) : (
+              <Navigate to="/" replace />
+            )
+          }
+        />
+
+        {/* Ludo Dedicated Lobby & Game Routes */}
+        <Route
+          path="/ludo"
+          element={
+            hasProfile ? (
+              <LudoLobby profile={profile} />
+            ) : (
+              <Navigate to="/" replace />
+            )
+          }
+        />
+        <Route
+          path="/ludo/:roomId"
+          element={
+            hasProfile ? (
+              <LudoGamePage profile={profile} />
             ) : (
               <Navigate to="/" replace />
             )

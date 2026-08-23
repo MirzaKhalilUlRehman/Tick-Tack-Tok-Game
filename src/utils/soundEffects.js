@@ -220,6 +220,75 @@ class SoundSynthesizer {
       });
     } catch (e) {}
   }
+
+  playDiceRoll() {
+    if (!getSoundSetting()) return;
+    try {
+      this.init();
+      if (!this.ctx) return;
+      // Multi-tap dice rattle effect
+      for (let i = 0; i < 5; i++) {
+        setTimeout(() => {
+          this.playTone(400 + Math.random() * 400, 'triangle', 0.04, 0.12);
+        }, i * 45);
+      }
+    } catch (e) {}
+  }
+
+  playTokenMove() {
+    if (!getSoundSetting()) return;
+    try {
+      this.init();
+      if (!this.ctx) return;
+      this.playTone(520, 'sine', 0.09, 0.15);
+    } catch (e) {}
+  }
+
+  playTokenCapture() {
+    if (!getSoundSetting()) return;
+    try {
+      this.init();
+      if (!this.ctx) return;
+      const notes = [600, 450, 300];
+      notes.forEach((freq, idx) => {
+        setTimeout(() => {
+          this.playTone(freq, 'sawtooth', 0.12, 0.2);
+        }, idx * 60);
+      });
+    } catch (e) {}
+  }
+
+  playBonusTurn() {
+    if (!getSoundSetting()) return;
+    try {
+      this.init();
+      if (!this.ctx) return;
+      const notes = [523, 659, 784, 1046];
+      notes.forEach((freq, idx) => {
+        setTimeout(() => {
+          this.playTone(freq, 'sine', 0.12, 0.15);
+        }, idx * 70);
+      });
+    } catch (e) {}
+  }
+
+  playLose() {
+    if (!getSoundSetting()) return;
+    try {
+      this.init();
+      if (!this.ctx) return;
+      const notes = [392, 349.23, 311.13, 261.63]; // G4, F4, Eb4, C4
+      notes.forEach((freq, idx) => {
+        setTimeout(() => {
+          this.playTone(freq, 'sawtooth', 0.2, 0.12);
+        }, idx * 110);
+      });
+    } catch (e) {}
+  }
+
+  playTick() {
+    this.playTone(800, 'triangle', 0.03, 0.08);
+  }
 }
 
 export const sound = new SoundSynthesizer();

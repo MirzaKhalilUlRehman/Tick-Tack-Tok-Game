@@ -33,7 +33,9 @@ export default function TicTacToeGame({
   playerProfile,
 }) {
   const [countdown, setCountdown] = useState(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const countdownIntervalRef = useRef(null);
+  const hasTriggeredRef = useRef(false);
 
   const { playPop, playWin, playLose, playDraw, playTick } = useSound();
 
@@ -64,16 +66,18 @@ export default function TicTacToeGame({
   // Track and synchronize automatic countdown
   useEffect(() => {
     if (status === 'finished' && nextGameAt) {
+      hasTriggeredRef.current = false;
       const updateTimer = () => {
         const remainingMs = nextGameAt - Date.now();
         const seconds = Math.max(0, Math.ceil(remainingMs / 1000));
         setCountdown(seconds);
 
-        if (seconds <= 0) {
+        if (seconds <= 0 && !hasTriggeredRef.current) {
+          hasTriggeredRef.current = true;
           if (countdownIntervalRef.current) {
             clearInterval(countdownIntervalRef.current);
           }
-          // Only player 1 or the host triggers the round start in database to prevent double execution
+          // Only player 1 or host triggers the round start in database to prevent double execution
           if (isPlayer1 || (!player1 && isPlayer2)) {
             startNextRound(pairId, gameData, players);
           }
@@ -83,13 +87,17 @@ export default function TicTacToeGame({
       updateTimer();
       countdownIntervalRef.current = setInterval(updateTimer, 500);
 
-      // Play outcome audio
-      if (winner === playerProfile?.playerId) {
-        playWin();
-      } else if (winner === 'draw') {
-        playDraw();
-      } else if (winner) {
-        playLose();
+      // Play outcome audio safely
+      try {
+        if (winner === playerProfile?.playerId) {
+          playWin?.();
+        } else if (winner === 'draw') {
+          playDraw?.();
+        } else if (winner) {
+          playLose?.();
+        }
+      } catch (audioErr) {
+        console.warn('Outcome audio failed safely:', audioErr);
       }
 
       return () => {
@@ -99,20 +107,26 @@ export default function TicTacToeGame({
       };
     } else {
       setCountdown(null);
+      hasTriggeredRef.current = false;
       if (countdownIntervalRef.current) {
         clearInterval(countdownIntervalRef.current);
       }
     }
-  }, [status, nextGameAt, winner, pairId]);
+  }, [status, nextGameAt, winner, pairId, isPlayer1, isPlayer2, round]);
 
   const handleCellClick = async (index) => {
-    if (!isMyTurn || board[index] !== null || status !== 'playing') return;
+    if (!isMyTurn || board[index] !== null || status !== 'playing' || isSubmitting) return;
 
     try {
+      setIsSubmitting(true);
       playPop();
       await makeTicTacToeMove(pairId, gameData, index, playerProfile.playerId, players);
     } catch (err) {
       console.warn('Move error:', err);
+    } finally {
+      setTimeout(() => {
+        setIsSubmitting(false);
+      }, 300);
     }
   };
 
