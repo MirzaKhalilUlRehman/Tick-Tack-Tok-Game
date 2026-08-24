@@ -4,9 +4,14 @@
  */
 import { initializeApp, getApps, getApp } from 'firebase/app';
 import { getAuth } from 'firebase/auth';
-import { getFirestore, initializeFirestore } from 'firebase/firestore';
+import { getFirestore, initializeFirestore, setLogLevel } from 'firebase/firestore';
 import { getStorage } from 'firebase/storage';
 import appletConfig from '../../firebase-applet-config.json';
+
+// Silence non-fatal connection probe/retry warnings in iframe environment
+try {
+  setLogLevel('error');
+} catch (e) {}
 
 const firebaseConfig = {
   apiKey: appletConfig.apiKey || import.meta.env.VITE_FIREBASE_API_KEY || '',
@@ -31,7 +36,7 @@ if (isFirebaseConfigured) {
     app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
     auth = getAuth(app);
     
-    // Connect to specific provisioned databaseId or default Firestore with resilient long-polling auto-detection
+    // Connect to specific provisioned databaseId or default Firestore with resilient long-polling
     const dbId = appletConfig.firestoreDatabaseId;
     const firestoreSettings = {
       experimentalAutoDetectLongPolling: true,

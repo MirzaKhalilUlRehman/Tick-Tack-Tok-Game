@@ -16,6 +16,7 @@ import {
   updateDoc,
   deleteField,
   onSnapshot,
+  runTransaction,
 } from 'firebase/firestore';
 import { db, isFirebaseConfigured } from './firebase';
 
@@ -767,6 +768,33 @@ export function subscribeUserConversations(userId, callback) {
    3. 2-PLAYER TIC TAC TOE & LUDO PRIVATE MATCHES
    ========================================================================== */
 
+export const createAll4InitialLudoTokens = () => ({
+  red: [
+    { id: 0, step: -1, color: 'red' },
+    { id: 1, step: -1, color: 'red' },
+    { id: 2, step: -1, color: 'red' },
+    { id: 3, step: -1, color: 'red' },
+  ],
+  green: [
+    { id: 0, step: -1, color: 'green' },
+    { id: 1, step: -1, color: 'green' },
+    { id: 2, step: -1, color: 'green' },
+    { id: 3, step: -1, color: 'green' },
+  ],
+  blue: [
+    { id: 0, step: -1, color: 'blue' },
+    { id: 1, step: -1, color: 'blue' },
+    { id: 2, step: -1, color: 'blue' },
+    { id: 3, step: -1, color: 'blue' },
+  ],
+  yellow: [
+    { id: 0, step: -1, color: 'yellow' },
+    { id: 1, step: -1, color: 'yellow' },
+    { id: 2, step: -1, color: 'yellow' },
+    { id: 3, step: -1, color: 'yellow' },
+  ],
+});
+
 export async function createPrivatePairInDb(pairId, player1Profile, gameType = 'tictactoe') {
   const isLudo = gameType === 'ludo';
 
@@ -786,7 +814,7 @@ export async function createPrivatePairInDb(pairId, player1Profile, gameType = '
         displayName: player1Profile.displayName,
         avatar: player1Profile.avatar,
         role: 'player1',
-        color: isLudo ? 'red' : 'X',
+        color: isLudo ? null : 'X',
         connected: true,
         joinedAt: Date.now(),
       },
@@ -798,36 +826,24 @@ export async function createPrivatePairInDb(pairId, player1Profile, gameType = '
     ? {
         pairId,
         gameType: 'ludo',
-        tokens: {
-          red: [
-            { id: 0, step: -1 },
-            { id: 1, step: -1 },
-            { id: 2, step: -1 },
-            { id: 3, step: -1 },
-          ],
-          yellow: [
-            { id: 0, step: -1 },
-            { id: 1, step: -1 },
-            { id: 2, step: -1 },
-            { id: 3, step: -1 },
-          ],
-        },
+        colorSelection: {},
+        tokens: createAll4InitialLudoTokens(),
         players: {
           player1: {
             playerId: player1Profile.playerId,
             displayName: player1Profile.displayName,
             avatar: player1Profile.avatar,
-            color: 'red',
+            color: null,
           },
           player2: null,
         },
-        currentTurn: player1Profile.playerId,
-        startingPlayer: player1Profile.playerId,
-        turnPhase: 'roll', // 'roll' | 'move' | 'no_moves' | 'game_over'
+        currentTurn: null,
+        startingPlayer: null,
+        turnPhase: 'waitingForRoll', // 'waitingForRoll' | 'waitingForMove' | 'game_over'
         diceValue: null,
         diceRolled: false,
         validTokenIds: [],
-        status: 'waiting', // 'waiting' | 'playing' | 'finished'
+        status: 'waiting', // 'waiting' | 'color_selection' | 'playing' | 'finished'
         round: 1,
         winner: null,
         winnerColor: null,
@@ -938,7 +954,7 @@ export async function joinPrivatePairInDb(pairId, player2Profile) {
     displayName: player2Profile.displayName,
     avatar: player2Profile.avatar,
     role: 'player2',
-    color: isLudo ? 'yellow' : 'O',
+    color: isLudo ? null : 'O',
     connected: true,
     joinedAt: Date.now(),
   };
@@ -951,12 +967,12 @@ export async function joinPrivatePairInDb(pairId, player2Profile) {
   };
 
   const gameUpdates = {
-    status: 'playing',
+    status: isLudo ? 'color_selection' : 'playing',
     'players.player2': {
       playerId: player2Profile.playerId,
       displayName: player2Profile.displayName,
       avatar: player2Profile.avatar,
-      color: isLudo ? 'yellow' : 'O',
+      color: isLudo ? null : 'O',
     },
     updatedAt: Date.now(),
   };
@@ -981,13 +997,13 @@ export async function joinPrivatePairInDb(pairId, player2Profile) {
   localPairs.set(cleanId, existingPair);
 
   const existingGame = localGames.get(cleanId) || getPersisted('games')[cleanId] || {};
-  existingGame.status = 'playing';
+  existingGame.status = isLudo ? 'color_selection' : 'playing';
   existingGame.players = existingGame.players || {};
   existingGame.players.player2 = {
     playerId: player2Profile.playerId,
     displayName: player2Profile.displayName,
     avatar: player2Profile.avatar,
-    color: isLudo ? 'yellow' : 'O',
+    color: isLudo ? null : 'O',
   };
   localGames.set(cleanId, existingGame);
 
@@ -1265,8 +1281,21 @@ export async function updateGameInDb(pairId, updates) {
   const merged = { ...existing };
   for (const [key, value] of Object.entries(updates)) {
     const parts = key.split(/[/.]/);
-    if (parts.length === 1) merged[parts[0]] = value;
-    else if (parts.length === 2) merged[parts[0]] = { ...(merged[parts[0]] || {}), [parts[1]]: value };
+    if (parts.length === 1) {
+      if (key === 'tokens' && typeof value === 'object' && value !== null) {
+        merged.tokens = {
+          ...(existing.tokens || createAll4InitialLudoTokens()),
+          ...value,
+        };
+      } else {
+        merged[parts[0]] = value;
+      }
+    } else if (parts.length === 2) {
+      merged[parts[0]] = { ...(merged[parts[0]] || {}), [parts[1]]: value };
+    } else if (parts.length === 3) {
+      merged[parts[0]] = merged[parts[0]] || {};
+      merged[parts[0]][parts[1]] = { ...(merged[parts[0]][parts[1]] || {}), [parts[2]]: value };
+    }
   }
   merged.updatedAt = Date.now();
   localGames.set(cleanId, merged);
@@ -1718,5 +1747,186 @@ export async function getAllUsersFromDb() {
   }
   const allUsers = getPersisted('users');
   return Object.values(allUsers);
+}
+
+/**
+ * Atomic Ludo Color Reservation
+ * Uses Firestore runTransaction to prevent race conditions when two players choose colors.
+ */
+export async function reserveLudoColorInDb(pairId, playerId, chosenColor, playerProfile) {
+  if (!pairId || !playerId || !chosenColor) return { success: false };
+  const cleanId = pairId.trim().toUpperCase();
+
+  const createInitial4Tokens = () => [
+    { id: 0, step: -1 },
+    { id: 1, step: -1 },
+    { id: 2, step: -1 },
+    { id: 3, step: -1 },
+  ];
+
+  if (isFirebaseConfigured && db) {
+    try {
+      const gameRef = doc(db, 'games', cleanId);
+      const pairRef = doc(db, 'privatePairs', cleanId);
+
+      const result = await runTransaction(db, async (transaction) => {
+        const gameSnap = await transaction.get(gameRef);
+        if (!gameSnap.exists()) {
+          throw new Error('Game session not found');
+        }
+        const game = gameSnap.data();
+        const colorSelection = game.colorSelection || {};
+
+        // 1. Check whether chosenColor is taken by another player
+        const existingReservation = colorSelection[chosenColor];
+        if (existingReservation && existingReservation.playerId && existingReservation.playerId !== playerId) {
+          throw new Error(`Color ${chosenColor} is already reserved by ${existingReservation.displayName || 'opponent'}`);
+        }
+
+        // 2. Release any previous color held by this player
+        const updatedColorSelection = { ...colorSelection };
+        for (const [col, res] of Object.entries(updatedColorSelection)) {
+          if (res?.playerId === playerId) {
+            delete updatedColorSelection[col];
+          }
+        }
+
+        // 3. Reserve the selected color
+        updatedColorSelection[chosenColor] = {
+          playerId,
+          displayName: playerProfile?.displayName || 'Player',
+          avatar: playerProfile?.avatar || 'fox',
+          selectedAt: Date.now(),
+        };
+
+        const isP1 = game.players?.player1?.playerId === playerId;
+        const p1 = game.players?.player1 ? { ...game.players.player1 } : null;
+        const p2 = game.players?.player2 ? { ...game.players.player2 } : null;
+
+        if (isP1 && p1) {
+          p1.color = chosenColor;
+        } else if (p2) {
+          p2.color = chosenColor;
+        }
+
+        const p1Color = isP1 ? chosenColor : p1?.color;
+        const p2Color = !isP1 ? chosenColor : p2?.color;
+
+        // 4. Check if both players have selected distinct colors
+        const bothSelected = Boolean(p1Color && p2Color && p1Color !== p2Color);
+
+        // Red starts first if present, otherwise Player 1 starts
+        let starterId = p1?.playerId || playerId;
+        if (p1Color === 'red') {
+          starterId = p1?.playerId;
+        } else if (p2Color === 'red') {
+          starterId = p2?.playerId;
+        }
+
+        const updates = {
+          colorSelection: updatedColorSelection,
+          'players.player1': p1,
+          'players.player2': p2,
+          status: bothSelected ? 'playing' : 'color_selection',
+          updatedAt: Date.now(),
+        };
+
+        if (bothSelected) {
+          updates.tokens = createAll4InitialLudoTokens();
+          updates.currentTurn = starterId;
+          updates.startingPlayer = starterId;
+          updates.turnPhase = 'waitingForRoll';
+          updates.diceValue = null;
+          updates.pendingDice = [];
+          updates.selectedDiceIndex = 0;
+          updates.consecutiveSixes = 0;
+          updates.bonusRolls = 0;
+          updates.diceRolled = false;
+          updates.validTokenIds = [];
+          updates.isMandatoryCapture = false;
+          updates.capturingTokenIds = [];
+        }
+
+        transaction.update(gameRef, normalizeFirestoreUpdates(updates));
+        return { success: true, bothSelected, color: chosenColor };
+      });
+
+      return result;
+    } catch (err) {
+      console.warn('Firestore color reservation transaction notice:', err);
+    }
+  }
+
+  // Local / offline fallback with atomic check
+  const existingGame = localGames.get(cleanId) || getPersisted('games')[cleanId] || {};
+  const colorSelection = existingGame.colorSelection || {};
+
+  const existingRes = colorSelection[chosenColor];
+  if (existingRes && existingRes.playerId && existingRes.playerId !== playerId) {
+    return { success: false, reason: 'taken' };
+  }
+
+  const updatedColorSelection = { ...colorSelection };
+  for (const [col, res] of Object.entries(updatedColorSelection)) {
+    if (res?.playerId === playerId) {
+      delete updatedColorSelection[col];
+    }
+  }
+  updatedColorSelection[chosenColor] = {
+    playerId,
+    displayName: playerProfile?.displayName || 'Player',
+    avatar: playerProfile?.avatar || 'fox',
+    selectedAt: Date.now(),
+  };
+
+  const isP1 = existingGame.players?.player1?.playerId === playerId;
+  const p1 = existingGame.players?.player1 ? { ...existingGame.players.player1 } : null;
+  const p2 = existingGame.players?.player2 ? { ...existingGame.players.player2 } : null;
+
+  if (isP1 && p1) {
+    p1.color = chosenColor;
+  } else if (p2) {
+    p2.color = chosenColor;
+  }
+
+  const p1Color = isP1 ? chosenColor : p1?.color;
+  const p2Color = !isP1 ? chosenColor : p2?.color;
+  const bothSelected = Boolean(p1Color && p2Color && p1Color !== p2Color);
+
+  let starterId = p1?.playerId || playerId;
+  if (p1Color === 'red') {
+    starterId = p1?.playerId;
+  } else if (p2Color === 'red') {
+    starterId = p2?.playerId;
+  }
+
+  const updates = {
+    colorSelection: updatedColorSelection,
+    players: {
+      player1: p1,
+      player2: p2,
+    },
+    status: bothSelected ? 'playing' : 'color_selection',
+    updatedAt: Date.now(),
+  };
+
+  if (bothSelected) {
+    updates.tokens = createAll4InitialLudoTokens();
+    updates.currentTurn = starterId;
+    updates.startingPlayer = starterId;
+    updates.turnPhase = 'waitingForRoll';
+    updates.diceValue = null;
+    updates.pendingDice = [];
+    updates.selectedDiceIndex = 0;
+    updates.consecutiveSixes = 0;
+    updates.bonusRolls = 0;
+    updates.diceRolled = false;
+    updates.validTokenIds = [];
+    updates.isMandatoryCapture = false;
+    updates.capturingTokenIds = [];
+  }
+
+  await updateGameInDb(cleanId, updates);
+  return { success: true, bothSelected, color: chosenColor };
 }
 

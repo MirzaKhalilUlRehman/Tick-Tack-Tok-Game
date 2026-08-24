@@ -28,6 +28,8 @@ import Toast from '../components/common/Toast';
 import { getAvatarById } from '../data/avatars';
 import { getStoredStats, updateStoredStats } from '../utils/storage';
 import { useSound } from '../hooks/useSound';
+import TicTacToeLogo from '../components/common/TicTacToeLogo';
+import LudoLogo from '../components/common/LudoLogo';
 import {
   subscribeToUserProfileInDb,
   subscribeToSocialInDb,
@@ -494,9 +496,7 @@ export default function Profile({ profile: myProfile, onUpdateProfile, onLogout 
             <div className="bg-white/[0.04] backdrop-blur-xl rounded-3xl p-5 sm:p-6 border border-white/10 shadow-xl space-y-4">
               <div className="flex items-center justify-between border-b border-white/10 pb-3">
                 <div className="flex items-center gap-2.5">
-                  <div className="w-10 h-10 rounded-xl bg-indigo-500/20 border border-indigo-500/30 flex items-center justify-center text-xl">
-                    ❌⭕
-                  </div>
+                  <TicTacToeLogo className="w-10 h-10" />
                   <div>
                     <h3 className="text-sm font-black font-display text-white">Tic Tac Toe</h3>
                     <p className="text-xs text-white/40">Multiplayer Quick Rounds</p>
@@ -532,9 +532,7 @@ export default function Profile({ profile: myProfile, onUpdateProfile, onLogout 
             <div className="bg-white/[0.04] backdrop-blur-xl rounded-3xl p-5 sm:p-6 border border-white/10 shadow-xl space-y-4">
               <div className="flex items-center justify-between border-b border-white/10 pb-3">
                 <div className="flex items-center gap-2.5">
-                  <div className="w-10 h-10 rounded-xl bg-amber-500/20 border border-amber-500/30 flex items-center justify-center text-xl">
-                    🎲
-                  </div>
+                  <LudoLogo className="w-10 h-10" />
                   <div>
                     <h3 className="text-sm font-black font-display text-white">Ludo</h3>
                     <p className="text-xs text-white/40">2-Player Classic Board</p>
@@ -614,9 +612,11 @@ export default function Profile({ profile: myProfile, onUpdateProfile, onLogout 
                         className="flex items-center justify-between p-3 rounded-2xl bg-black/40 border border-white/5"
                       >
                         <div className="flex items-center gap-3">
-                          <span className="text-lg">
-                            {match.gameType === 'ludo' ? '🎲' : '❌⭕'}
-                          </span>
+                          {match.gameType === 'ludo' ? (
+                            <LudoLogo className="w-8 h-8" />
+                          ) : (
+                            <TicTacToeLogo className="w-8 h-8" />
+                          )}
                           <div>
                             <p className="text-xs font-bold text-white">
                               {match.gameType === 'ludo' ? 'Ludo' : 'Tic Tac Toe'} (Round {match.round || 1})

@@ -21,6 +21,8 @@ import {
 import Header from '../components/common/Header';
 import Modal from '../components/common/Modal';
 import Toast from '../components/common/Toast';
+import TicTacToeLogo from '../components/common/TicTacToeLogo';
+import LudoLogo from '../components/common/LudoLogo';
 import { getAvatarById } from '../data/avatars';
 import { createPrivatePair } from '../services/roomService';
 import { useInbox } from '../hooks/useInbox';
@@ -170,9 +172,7 @@ export default function Home({ profile }) {
               className="bg-white/[0.04] backdrop-blur-xl rounded-3xl p-6 sm:p-8 border border-white/10 shadow-2xl flex flex-col items-center justify-between text-center relative overflow-hidden group hover:border-indigo-500/40 transition-all duration-300"
             >
               <div className="w-full flex flex-col items-center">
-                <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-3xl bg-indigo-500/20 border border-indigo-500/30 flex items-center justify-center text-indigo-400 shadow-xl mb-4 group-hover:scale-105 transition-transform">
-                  <Grid3X3 className="w-8 h-8 sm:w-10 sm:h-10" />
-                </div>
+                <TicTacToeLogo className="mb-4" />
 
                 <h2 className="text-2xl sm:text-3xl font-black font-display text-white mb-2 tracking-wide uppercase">
                   Tic Tac Toe
@@ -223,9 +223,7 @@ export default function Home({ profile }) {
               className="bg-white/[0.04] backdrop-blur-xl rounded-3xl p-6 sm:p-8 border border-white/10 shadow-2xl flex flex-col items-center justify-between text-center relative overflow-hidden group hover:border-amber-500/40 transition-all duration-300"
             >
               <div className="w-full flex flex-col items-center">
-                <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-3xl bg-amber-500/20 border border-amber-500/30 flex items-center justify-center text-amber-400 shadow-xl mb-4 group-hover:scale-105 transition-transform">
-                  <Dices className="w-8 h-8 sm:w-10 sm:h-10" />
-                </div>
+                <LudoLogo className="mb-4" />
 
                 <div className="flex items-center gap-2 mb-2">
                   <h2 className="text-2xl sm:text-3xl font-black font-display text-white tracking-wide uppercase">

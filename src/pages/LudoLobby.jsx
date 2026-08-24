@@ -8,6 +8,7 @@ import { Dices, PlusCircle, LogIn, ArrowLeft, Loader2, ArrowRight } from 'lucide
 import Header from '../components/common/Header';
 import Modal from '../components/common/Modal';
 import Toast from '../components/common/Toast';
+import LudoLogo from '../components/common/LudoLogo';
 import { createPrivatePair } from '../services/roomService';
 import { useSound } from '../hooks/useSound';
 
@@ -70,10 +71,8 @@ export default function LudoLobby({ profile }) {
           </button>
 
           <div className="bg-white/[0.04] backdrop-blur-xl rounded-3xl p-6 sm:p-10 border border-white/10 shadow-2xl flex flex-col items-center text-center relative overflow-hidden">
-            {/* Ludo Icon */}
-            <div className="w-20 h-20 rounded-3xl bg-gradient-to-br from-rose-500/20 to-amber-500/20 border border-amber-500/30 flex items-center justify-center text-amber-400 shadow-2xl mb-6">
-              <Dices className="w-10 h-10" />
-            </div>
+            {/* Ludo Logo */}
+            <LudoLogo className="mb-6" />
 
             <div className="flex items-center gap-2 mb-2">
               <h1 className="text-3xl sm:text-4xl font-black font-display text-white tracking-wide uppercase">

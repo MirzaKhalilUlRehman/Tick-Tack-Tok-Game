@@ -527,6 +527,13 @@ function MessageBubbleItem({
 
         {/* Bubble */}
         <div
+          style={{
+            wordWrap: 'break-word',
+            overflowWrap: 'anywhere',
+            wordBreak: 'break-word',
+            whiteSpace: 'pre-wrap',
+            maxWidth: '100%',
+          }}
           className={`relative px-4 py-2.5 rounded-2xl text-xs sm:text-sm font-normal leading-relaxed break-words shadow-lg transition-all ${
             isMe
               ? 'bg-indigo-600 text-white rounded-br-xs'
@@ -545,13 +552,15 @@ function MessageBubbleItem({
                 <Reply className="w-2.5 h-2.5" />
                 <span>{msg.replyTo.senderName || 'Player'}</span>
               </div>
-              <p className="text-white/80 line-clamp-1 truncate mt-0.5">
+              <p className="text-white/80 line-clamp-1 truncate mt-0.5" style={{ wordBreak: 'break-word', overflowWrap: 'anywhere' }}>
                 {msg.replyTo.textPreview || 'Original message'}
               </p>
             </div>
           )}
 
-          <p className="whitespace-pre-wrap">{msg.text}</p>
+          <p style={{ wordWrap: 'break-word', overflowWrap: 'anywhere', wordBreak: 'break-word', whiteSpace: 'pre-wrap', maxWidth: '100%' }}>
+            {msg.text}
+          </p>
 
           {/* Meta info (Time & Seen status) */}
           <div

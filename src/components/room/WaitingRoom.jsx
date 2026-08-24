@@ -18,6 +18,8 @@ import {
 import { getAvatarById } from '../../data/avatars';
 import { useSound } from '../../hooks/useSound';
 import QRCodeModal from '../common/QRCodeModal';
+import TicTacToeLogo from '../common/TicTacToeLogo';
+import LudoLogo from '../common/LudoLogo';
 
 export default function WaitingRoom({ pairData, playerProfile, onLeaveRoom, onCopyInvite }) {
   const [copiedCode, setCopiedCode] = useState(false);
@@ -71,18 +73,30 @@ export default function WaitingRoom({ pairData, playerProfile, onLeaveRoom, onCo
         {/* Top Glow */}
         <div className="absolute top-0 left-1/2 -translate-x-1/2 w-3/4 h-24 bg-gradient-to-b from-indigo-500/20 to-transparent blur-2xl pointer-events-none" />
 
-        {/* Badges */}
-        <div className="flex flex-wrap items-center justify-center gap-2 mb-4">
-          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-indigo-500/15 border border-indigo-500/30 text-indigo-300 text-xs font-semibold">
-            <ShieldCheck className="w-3.5 h-3.5 text-indigo-400" />
-            <span>2-Player {gameName}</span>
-          </div>
-          <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 text-[11px] font-semibold">
-            <Monitor className="w-3 h-3" />
-            <span>PC</span>
-            <span className="text-white/40">↔</span>
-            <Smartphone className="w-3 h-3" />
-            <span>Android</span>
+        {/* Game Logo & Badges */}
+        <div className="flex flex-col items-center justify-center mb-4">
+          {isLudo ? (
+            <LudoLogo className="w-16 h-16 sm:w-20 sm:h-20 mb-3" />
+          ) : (
+            <TicTacToeLogo className="w-16 h-16 sm:w-20 sm:h-20 mb-3" />
+          )}
+
+          <div className="flex flex-wrap items-center justify-center gap-2">
+            <div className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold ${
+              isLudo
+                ? 'bg-amber-500/15 border border-amber-500/30 text-amber-300'
+                : 'bg-indigo-500/15 border border-indigo-500/30 text-indigo-300'
+            }`}>
+              <ShieldCheck className={`w-3.5 h-3.5 ${isLudo ? 'text-amber-400' : 'text-indigo-400'}`} />
+              <span>2-Player {gameName}</span>
+            </div>
+            <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 text-[11px] font-semibold">
+              <Monitor className="w-3 h-3" />
+              <span>PC</span>
+              <span className="text-white/40">↔</span>
+              <Smartphone className="w-3 h-3" />
+              <span>Android</span>
+            </div>
           </div>
         </div>
 

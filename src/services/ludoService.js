@@ -2,7 +2,7 @@
  * Ludo Game Service & Rules Engine for KM
  * Supports 2-Player Real-Time Ludo (Red vs Yellow) with synchronized turns, locks, and stats recording.
  */
-import { updateGameInDb, recordMatchResultInDb } from '../firebase/database';
+import { updateGameInDb, recordMatchResultInDb, reserveLudoColorInDb } from '../firebase/database';
 import { updateStoredStats } from '../utils/storage';
 import {
   TRACK_COORDINATES,
@@ -19,12 +19,20 @@ import {
   getValidMovableTokens,
   canTokenMove,
   isWinningTokens,
+  getCapturingTokens,
+  getMovableTokensWithMandatoryCapture,
+  getLegalMovesForDice,
+  getStackedTokensMap,
 } from '../utils/ludoValidation';
 import {
   createInitialTokens,
   createInitialLudoGameState,
   computeRollDiceState,
   computeMoveTokenState,
+  normalizeAllTokens,
+  resolvePlayerColor,
+  resolveOpponent,
+  ALL_LUDO_COLORS,
 } from '../utils/ludoLogic';
 
 const ludoLocks = new Set();
@@ -46,9 +54,61 @@ export {
   canTokenMove,
   isWinningTokens,
   isWinningTokens as checkLudoWin,
+  getCapturingTokens,
+  getMovableTokensWithMandatoryCapture,
+  getLegalMovesForDice,
+  getStackedTokensMap,
   createInitialTokens,
   createInitialLudoGameState,
+  normalizeAllTokens,
+  resolvePlayerColor,
+  resolveOpponent,
+  ALL_LUDO_COLORS,
+  reserveLudoColorInDb,
 };
+
+/**
+ * Atomically selects player color (Red, Green, Blue, or Yellow) with Firestore runTransaction
+ */
+export async function selectLudoColor(pairId, gameData, playerId, chosenColor, playerProfile) {
+  if (!pairId || !playerId || !chosenColor) return { success: false };
+  return reserveLudoColorInDb(pairId, playerId, chosenColor, playerProfile);
+}
+
+/**
+ * Selects a specific pending die value from pendingDice queue
+ */
+export async function selectPendingDiceIndex(pairId, gameData, playerId, diceIndex) {
+  if (!gameData || gameData.currentTurn !== playerId) return;
+  const pendingDice = gameData.pendingDice || [];
+  if (diceIndex < 0 || diceIndex >= pendingDice.length) return;
+
+  const targetDieValue = pendingDice[diceIndex];
+  const playerColor = resolvePlayerColor(gameData, playerId);
+  const { opponentColor } = resolveOpponent(gameData, playerId);
+
+  const allTokens = normalizeAllTokens(gameData?.tokens);
+  const playerTokens = allTokens[playerColor];
+  const opponentTokens = allTokens[opponentColor];
+
+  const legalMoves = getLegalMovesForDice(
+    playerColor,
+    playerTokens,
+    [targetDieValue],
+    opponentColor,
+    opponentTokens
+  );
+
+  await updateGameInDb(pairId, {
+    selectedDiceIndex: diceIndex,
+    diceValue: targetDieValue,
+    validTokenIds: legalMoves.validTokenIds,
+    isMandatoryCapture: false,
+    capturingTokenIds: legalMoves.capturingTokenIds,
+    lastActionMessage: null,
+    updatedAt: Date.now(),
+  });
+}
 
 /**
  * Rolls the dice for the active player
@@ -74,18 +134,11 @@ export async function rollLudoDice(pairId, gameData, playerId) {
   try {
     // Generate cryptographically fair 1-6 roll
     const diceValue = Math.floor(Math.random() * 6) + 1;
-    const isP1 = gameData.players?.player1?.playerId === playerId;
-    const playerColor = isP1 ? 'red' : 'yellow';
-    const playerTokens = gameData.tokens?.[playerColor] || createInitialTokens();
-
-    const movableTokenIds = getValidMovableTokens(playerTokens, diceValue);
-    const hasMoves = movableTokenIds.length > 0;
-
     const updates = computeRollDiceState(gameData, playerId, diceValue);
 
     await updateGameInDb(pairId, updates);
 
-    return { diceValue, movableTokenIds };
+    return { diceValue, updates };
   } finally {
     setTimeout(() => {
       ludoLocks.delete(lockKey);
@@ -96,7 +149,7 @@ export async function rollLudoDice(pairId, gameData, playerId) {
 /**
  * Moves a selected token for the active player
  */
-export async function moveLudoToken(pairId, gameData, tokenId, playerId) {
+export async function moveLudoToken(pairId, gameData, tokenId, playerId, diceIndex = null) {
   if (!gameData || gameData.status !== 'playing') {
     throw new Error('Game is not currently active');
   }
@@ -116,7 +169,7 @@ export async function moveLudoToken(pairId, gameData, tokenId, playerId) {
 
   try {
     const isP1 = gameData.players?.player1?.playerId === playerId;
-    const updates = computeMoveTokenState(gameData, tokenId, playerId);
+    const updates = computeMoveTokenState(gameData, tokenId, playerId, diceIndex);
 
     if (updates.status === 'finished') {
       const p1 = gameData.players?.player1;
@@ -176,8 +229,15 @@ export async function passLudoTurn(pairId, gameData) {
       currentTurn: opponentId,
       turnPhase: 'waitingForRoll',
       diceValue: null,
+      pendingDice: [],
+      selectedDiceIndex: 0,
+      consecutiveSixes: 0,
+      bonusRolls: 0,
       diceRolled: false,
       validTokenIds: [],
+      isMandatoryCapture: false,
+      capturingTokenIds: [],
+      lastActionMessage: null,
       updatedAt: Date.now(),
     });
   } finally {
@@ -205,12 +265,11 @@ export async function resetLudoGame(pairId, gameData) {
 
     // Alternate starting player each round
     const nextStarterId = nextRound % 2 === 1 ? p1Id : p2Id;
+    const p1Color = gameData.players?.player1?.color || 'red';
+    const p2Color = gameData.players?.player2?.color || 'yellow';
 
     await updateGameInDb(pairId, {
-      tokens: {
-        red: createInitialTokens(),
-        yellow: createInitialTokens(),
-      },
+      tokens: normalizeAllTokens(null),
       currentTurn: nextStarterId,
       startingPlayer: nextStarterId,
       status: 'playing',
@@ -218,10 +277,17 @@ export async function resetLudoGame(pairId, gameData) {
       winnerColor: null,
       turnPhase: 'waitingForRoll',
       diceValue: null,
+      pendingDice: [],
+      selectedDiceIndex: 0,
+      consecutiveSixes: 0,
+      bonusRolls: 0,
       diceRolled: false,
       validTokenIds: [],
+      isMandatoryCapture: false,
+      capturingTokenIds: [],
       round: nextRound,
       lastMove: null,
+      lastActionMessage: null,
       nextGameAt: null,
       updatedAt: Date.now(),
     });

@@ -3,8 +3,9 @@
  */
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Grid3X3, ArrowRight, Loader2, ShieldCheck } from 'lucide-react';
+import { ArrowRight, Loader2, ShieldCheck } from 'lucide-react';
 import Header from '../components/common/Header';
+import TicTacToeLogo from '../components/common/TicTacToeLogo';
 import { createPrivatePair } from '../services/roomService';
 import { useSound } from '../hooks/useSound';
 
@@ -50,9 +51,7 @@ export default function CreateRoom({ profile }) {
           </div>
 
           <div className="p-6 rounded-2xl bg-white/5 border border-white/10 text-center flex flex-col items-center gap-3 mb-6">
-            <div className="w-14 h-14 rounded-2xl bg-indigo-500/20 border border-indigo-500/30 flex items-center justify-center text-indigo-300">
-              <Grid3X3 className="w-7 h-7" />
-            </div>
+            <TicTacToeLogo className="w-16 h-16" />
             <div>
               <h2 className="text-base font-bold text-white font-display">2-Player Real-Time</h2>
               <p className="text-xs text-white/50">Includes real-time chat with emoji reactions</p>

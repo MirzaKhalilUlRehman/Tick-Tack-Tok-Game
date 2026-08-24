@@ -82,7 +82,7 @@ export const TRACK_COORDINATES = [
   { r: 6, c: 0 }, // 51
 ];
 
-// Home stretch lane coordinates (steps 51..55) and Center Goal (step 56)
+// Home stretch lane coordinates (steps 51..55) and Center Goal (step 56) for all 4 colors
 export const HOME_LANES = {
   red: [
     { r: 7, c: 1 }, // step 51
@@ -92,6 +92,14 @@ export const HOME_LANES = {
     { r: 7, c: 5 }, // step 55
     { r: 7, c: 6, isGoal: true }, // step 56 (Goal)
   ],
+  green: [
+    { r: 1, c: 7 }, // step 51
+    { r: 2, c: 7 }, // step 52
+    { r: 3, c: 7 }, // step 53
+    { r: 4, c: 7 }, // step 54
+    { r: 5, c: 7 }, // step 55
+    { r: 6, c: 7, isGoal: true }, // step 56 (Goal)
+  ],
   yellow: [
     { r: 7, c: 13 }, // step 51
     { r: 7, c: 12 }, // step 52
@@ -99,6 +107,14 @@ export const HOME_LANES = {
     { r: 7, c: 10 }, // step 54
     { r: 7, c: 9 }, // step 55
     { r: 7, c: 8, isGoal: true }, // step 56 (Goal)
+  ],
+  blue: [
+    { r: 13, c: 7 }, // step 51
+    { r: 12, c: 7 }, // step 52
+    { r: 11, c: 7 }, // step 53
+    { r: 10, c: 7 }, // step 54
+    { r: 9, c: 7 }, // step 55
+    { r: 8, c: 7, isGoal: true }, // step 56 (Goal)
   ],
 };
 
@@ -110,17 +126,31 @@ export const BASE_YARD_SLOTS = {
     { r: 3.5, c: 1.5 },
     { r: 3.5, c: 3.5 },
   ],
+  green: [
+    { r: 1.5, c: 10.5 },
+    { r: 1.5, c: 12.5 },
+    { r: 3.5, c: 10.5 },
+    { r: 3.5, c: 12.5 },
+  ],
   yellow: [
     { r: 10.5, c: 10.5 },
     { r: 10.5, c: 12.5 },
     { r: 12.5, c: 10.5 },
     { r: 12.5, c: 12.5 },
   ],
+  blue: [
+    { r: 10.5, c: 1.5 },
+    { r: 10.5, c: 3.5 },
+    { r: 12.5, c: 1.5 },
+    { r: 12.5, c: 3.5 },
+  ],
 };
 
 export const PLAYER_OFFSETS = {
   red: 0,
+  green: 13,
   yellow: 26,
+  blue: 39,
 };
 
 export const TOTAL_TRACK_CELLS = 52;
